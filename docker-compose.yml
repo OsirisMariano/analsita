@@ -1,0 +1,11 @@
+services:
+  api:
+    build: ./backend
+    container_name: analista_api
+    volumes:
+      - ./backend:/app
+      - ./data:/var/abastece/dados # Mapeia a pasta local para o caminho que o script espera
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_PATH=/var/abastece/dados/abastece.db
