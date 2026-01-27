@@ -1,11 +1,22 @@
+version: "3.8"
+
 services:
+  # O motor de análise (Python + FastAPI)
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: analista_api
     volumes:
       - ./backend:/app
-      - ./data:/var/abastece/dados # Mapeia a pasta local para o caminho que o script espera
+      - ./data:/var/abastece/dados
     ports:
       - "8000:8000"
     environment:
       - DB_PATH=/var/abastece/dados/abastece.db
+    stdin_open: true
+    tty: true
+
+networks:
+  default:
+    name: analista_network
