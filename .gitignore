@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Docker/Data
+data/*.db
+data/*.db-journal
+
+# Node/Vue
+node_modules/
+dist/
+.env
+
+# Logs e Temporários
+*.log
+.DS_Store
