@@ -1,19 +1,25 @@
-# Python
+# Python - Arquivos compilados e ambientes virtuais
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
+ENV/
 
-# Docker/Data
+# Banco de Dados - Não queremos versionar os dados simulados, apenas o código
 data/*.db
 data/*.db-journal
 
-# Node/Vue
+# Frontend - Dependências e pastas de build
 node_modules/
 dist/
 .env
+.env.local
 
-# Logs e Temporários
+# Logs e arquivos do Sistema
 *.log
 .DS_Store
+Thumbs.db
+
+# Docker
+.docker/
