@@ -1,10 +1,19 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import os
 import subprocess
 
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite requisições de qualquer origem (ideal para dev)
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permite todos os headers
+)
 
 # 2. Configurações e Constantes
 DB_PATH = "/var/abastece/dados/abastece.db"
