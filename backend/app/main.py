@@ -63,3 +63,43 @@ def listar_transacoes():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "db_connected": os.path.exists(DB_PATH)}
+
+@app.get("/stats")
+def obter_resumo():
+    resumo = {
+        "monitoramento": {"online": 0, "offline": 0, "total": 0},
+        "transacoes": {"concluidas": 0, "falhas": 0, "valor_total": 0.0}
+    }
+    
+    # 1. Agregando Status de Rede
+    for eq in EQUIPAMENTOS:
+        status = disparar_ping(eq["ip"])
+        resumo["monitoramento"]["total"] += 1
+        if status == "Online":
+            resumo["monitoramento"]["online"] += 1
+        else:
+            resumo["monitoramento"]["offline"] += 1
+
+    # 2. Agregando Dados Financeiros/Operacionais
+    if os.path.exists(DB_PATH):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Contagem de Status
+            cursor.execute("SELECT status, COUNT(*), SUM(valor) FROM transacoes GROUP BY status")
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                status, qtd, soma_valor = row
+                if status == 'CONCLUIDO':
+                    resumo["transacoes"]["concluidas"] = qtd
+                    resumo["transacoes"]["valor_total"] = round(soma_valor or 0, 2)
+                elif status == 'FALHA':
+                    resumo["transacoes"]["falhas"] = qtd
+            
+            conn.close()
+        except Exception as e:
+            print(f"Erro ao agregar DB: {e}")
+
+    return resumo
