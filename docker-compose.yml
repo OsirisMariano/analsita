@@ -1,21 +1,25 @@
 version: "3.8"
 
 services:
-  # O motor de análise (Python + FastAPI)
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: analista_api
     volumes:
-      - ./backend:/app
+      - ./backend/app:/app/app
       - ./data:/var/abastece/dados
     ports:
       - "8000:8000"
-    environment:
-      - DB_PATH=/var/abastece/dados/abastece.db
-    stdin_open: true
-    tty: true
+
+  frontend:
+    build: ./frontend
+    container_name: analista_web
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Evita que o volume sobrescreva os pacotes instalados no container
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
 
 networks:
   default:

@@ -1,10 +1,19 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import os
 import subprocess
 
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite requisições de qualquer origem (ideal para dev)
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permite todos os headers
+)
 
 # 2. Configurações e Constantes
 DB_PATH = "/var/abastece/dados/abastece.db"
@@ -63,3 +72,43 @@ def listar_transacoes():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "db_connected": os.path.exists(DB_PATH)}
+
+@app.get("/stats")
+def obter_resumo():
+    resumo = {
+        "monitoramento": {"online": 0, "offline": 0, "total": 0},
+        "transacoes": {"concluidas": 0, "falhas": 0, "valor_total": 0.0}
+    }
+    
+    # 1. Agregando Status de Rede
+    for eq in EQUIPAMENTOS:
+        status = disparar_ping(eq["ip"])
+        resumo["monitoramento"]["total"] += 1
+        if status == "Online":
+            resumo["monitoramento"]["online"] += 1
+        else:
+            resumo["monitoramento"]["offline"] += 1
+
+    # 2. Agregando Dados Financeiros/Operacionais
+    if os.path.exists(DB_PATH):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Contagem de Status
+            cursor.execute("SELECT status, COUNT(*), SUM(valor) FROM transacoes GROUP BY status")
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                status, qtd, soma_valor = row
+                if status == 'CONCLUIDO':
+                    resumo["transacoes"]["concluidas"] = qtd
+                    resumo["transacoes"]["valor_total"] = round(soma_valor or 0, 2)
+                elif status == 'FALHA':
+                    resumo["transacoes"]["falhas"] = qtd
+            
+            conn.close()
+        except Exception as e:
+            print(f"Erro ao agregar DB: {e}")
+
+    return resumo
