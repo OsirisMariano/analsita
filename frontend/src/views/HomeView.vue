@@ -1,21 +1,28 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import DispositivoCard from '../components/DispositivoCard.vue'
 
 const resumo = ref(null)
+const dispositivos = ref([])
 
 const carregarDados = async () => {
   try {
-    const response = await fetch('http://localhost:8000/stats')
-    resumo.value = await response.json()
+    // Busca os dados globais (vendas/equipamentos totais)
+    const resStats = await fetch('http://localhost:8000/stats')
+    resumo.value = await resStats.json()
+
+    // Busca o status individual de cada antena/dispositivo
+    const resMonit = await fetch('http://localhost:8000/monitoramento')
+    const dataMonit = await resMonit.json()
+    dispositivos.value = dataMonit.dispositivos
   } catch (error) {
-    console.error("Erro ao buscar dados da API:", error)
+    console.error("Erro ao integrar com API:", error)
   }
 }
 
 onMounted(() => {
   carregarDados()
-  // Atualiza a cada 5 segundos para simular monitoramento em tempo real
-  setInterval(carregarDados, 5000)
+  setInterval(carregarDados, 5000) // Atualiza a cada 5 segundos
 })
 </script>
 
@@ -34,7 +41,15 @@ onMounted(() => {
         <p>Sucesso: {{ resumo.transacoes.concluidas }}</p>
       </div>
     </div>
-    <div v-else>Carregando dados da pista...</div>
+
+    <h2 class="section-title">📡 Saúde da Pista (Status Individual)</h2>
+    <div class="grid-dispositivos">
+      <DispositivoCard 
+        v-for="item in dispositivos" 
+        :key="item.ip" 
+        :dispositivo="item" 
+      />
+    </div>
   </main>
 </template>
 
@@ -42,16 +57,30 @@ onMounted(() => {
 .stats-container {
   display: flex;
   gap: 20px;
-  margin-top: 20px;
+  margin-bottom: 30px;
 }
 .card {
   background: #2a2a2a;
   padding: 20px;
   border-radius: 8px;
-  border-left: 5px solid #00bd7e;
   flex: 1;
 }
 .online { color: #00bd7e; font-weight: bold; }
 .offline { color: #ff5252; font-weight: bold; }
 .valor { font-size: 24px; color: #ffd700; }
+
+.section-title {
+  margin-top: 40px;
+  color: #888;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.grid-dispositivos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
 </style>
