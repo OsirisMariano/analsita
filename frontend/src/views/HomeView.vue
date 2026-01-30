@@ -1,20 +1,30 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import DispositivoCard from '../components/DispositivoCard.vue'
+import TabelaTransacoes from '../components/TabelaTransacoes.vue' // Novo Import
 
 const resumo = ref(null)
 const dispositivos = ref([])
+const ultimasTransacoes = ref([]) // Nova variável de estado
 
 const carregarDados = async () => {
   try {
-    // Busca os dados globais (vendas/equipamentos totais)
+    // 1. Busca resumo e transações
     const resStats = await fetch('http://localhost:8000/stats')
-    resumo.value = await resStats.json()
+    const dataStats = await resStats.json()
+    resumo.value = dataStats
+    
+    // Tenta capturar a lista. Se não existir, deixa o array vazio [] para não quebrar o código.
+    ultimasTransacoes.value = dataStats.transacoes?.lista_detalhada || []
 
-    // Busca o status individual de cada antena/dispositivo
+    // 2. Busca monitoramento (Saúde da Pista)
     const resMonit = await fetch('http://localhost:8000/monitoramento')
     const dataMonit = await resMonit.json()
     dispositivos.value = dataMonit.dispositivos
+
+    // 3. Diagnóstico (Pressione F12 no navegador para ver)
+    console.log("Conteúdo de ultimasTransacoes:", ultimasTransacoes.value)
+
   } catch (error) {
     console.error("Erro ao integrar com API:", error)
   }
@@ -22,7 +32,7 @@ const carregarDados = async () => {
 
 onMounted(() => {
   carregarDados()
-  setInterval(carregarDados, 5000) // Atualiza a cada 5 segundos
+  setInterval(carregarDados, 5000)
 })
 </script>
 
@@ -50,6 +60,10 @@ onMounted(() => {
         :dispositivo="item" 
       />
     </div>
+
+    <h2 class="section-title">💸 Últimas Transações (Tempo Real)</h2>
+    <TabelaTransacoes :transacoes="ultimasTransacoes" />
+    
   </main>
 </template>
 

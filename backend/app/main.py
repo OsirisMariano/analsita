@@ -77,10 +77,14 @@ def health_check():
 def obter_resumo():
     resumo = {
         "monitoramento": {"online": 0, "offline": 0, "total": 0},
-        "transacoes": {"concluidas": 0, "falhas": 0, "valor_total": 0.0}
+        "transacoes": {
+            "concluidas": 0, 
+            "falhas": 0, 
+            "valor_total": 0.0,
+            "lista_detalhada": []  # <--- Adicionamos o campo aqui
+        }
     }
     
-    # 1. Agregando Status de Rede
     for eq in EQUIPAMENTOS:
         status = disparar_ping(eq["ip"])
         resumo["monitoramento"]["total"] += 1
@@ -89,23 +93,27 @@ def obter_resumo():
         else:
             resumo["monitoramento"]["offline"] += 1
 
-    # 2. Agregando Dados Financeiros/Operacionais
     if os.path.exists(DB_PATH):
         try:
             conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row # Essencial para transformar em dicionário
             cursor = conn.cursor()
             
-            # Contagem de Status
+            # 1. Agregado financeiro
             cursor.execute("SELECT status, COUNT(*), SUM(valor) FROM transacoes GROUP BY status")
             rows = cursor.fetchall()
-            
             for row in rows:
-                status, qtd, soma_valor = row
+                status, qtd, soma_valor = row[0], row[1], row[2]
                 if status == 'CONCLUIDO':
                     resumo["transacoes"]["concluidas"] = qtd
                     resumo["transacoes"]["valor_total"] = round(soma_valor or 0, 2)
                 elif status == 'FALHA':
                     resumo["transacoes"]["falhas"] = qtd
+
+            # 2. BUSCA AS ÚLTIMAS 5 TRANSAÇÕES (A correção que faltava!)
+            cursor.execute("SELECT * FROM transacoes ORDER BY timestamp DESC LIMIT 5")
+            ultimas = cursor.fetchall()
+            resumo["transacoes"]["lista_detalhada"] = [dict(r) for r in ultimas]
             
             conn.close()
         except Exception as e:
