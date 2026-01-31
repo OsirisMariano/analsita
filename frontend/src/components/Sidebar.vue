@@ -32,6 +32,11 @@ const menuItems = [
         <span class="menu-icon">📹</span>
         <span class="menu-text">Câmeras</span>
       </RouterLink>
+      
+      <RouterLink to="/leitoras" class="menu-item" active-class="active">
+        <span class="menu-icon">📡</span>
+        <span class="menu-text">Leitoras</span>
+      </RouterLink>
 
       <RouterLink to="/validacao-arquivos" class="menu-item" active-class="active">
         <span class="menu-icon">📄</span>

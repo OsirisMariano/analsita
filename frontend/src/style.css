@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1c2434;
+}
+
+/* Isso vai garantir que a Sidebar não "esmague" o conteúdo */
+:root {
+  --sidebar-width: 260px;
+}
