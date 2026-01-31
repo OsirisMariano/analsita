@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import CamerasView from '../views/CamerasView.vue'
 import ValidacaoArquivosView from '../views/ValidacaoArquivosView.vue'
+import LeitorasView from '@/views/LeiturasView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,8 +21,12 @@ const router = createRouter({
       path: '/validacao-arquivos',
       name: 'validacao-arquivos',
       component: ValidacaoArquivosView
+    },
+    { 
+      path: '/leitoras', 
+      name: 'leitoras', 
+      component: LeitorasView 
     }
-
   ],
 })
 
