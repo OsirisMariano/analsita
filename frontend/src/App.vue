@@ -35,6 +35,7 @@ h1, h2, h3, h4 {
 
 .main-content {
   flex: 1;
+  min-height: 100vh;
   margin-left: 260px; 
   display: flex;
   flex-direction: column;

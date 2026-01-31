@@ -22,52 +22,91 @@ const menuItems = [
     </div>
 
     <nav class="menu">
-      <div v-for="item in menuItems" :key="item.nome" class="menu-item">
-        <span class="menu-icon">{{ item.icon }}</span>
-        <span class="menu-text">{{ item.nome }}</span>
-        <span v-if="item.alerta" class="badge-alerta">{{ item.alerta }}</span>
+      <RouterLink to="/" class="menu-item" active-class="active">
+        <span class="menu-icon">📊</span>
+        <span class="menu-text">Dashboard</span>
+      </RouterLink>
+
+      <RouterLink to="/cameras" class="menu-item" active-class="active">
+        <span class="menu-icon">📹</span>
+        <span class="menu-text">Câmeras</span>
+      </RouterLink>
+
+      <div class="menu-item">
+        <span class="menu-icon">📄</span>
+        <span class="menu-text">Validação de Arquivos</span>
+        <span class="badge-alerta">15</span>
       </div>
-    </nav>
+      </nav>
   </aside>
 </template>
 
 <style scoped>
 .sidebar {
-  width: 260px;
-  height: 100vh;
-  background: #ffffff; /* Branco */
-  color: #1c2434;
-  display: flex;
-  flex-direction: column;
+  /* Fixa a barra na lateral esquerda */
   position: fixed;
   left: 0;
   top: 0;
+  bottom: 0;
+  width: 260px;
+  
+  /* Cores e Bordas */
+  background-color: #ffffff;
   border-right: 1px solid #e2e8f0;
+  
+  /* Alinhamento interno */
+  display: flex;
+  flex-direction: column;
+  z-index: 9999; /* Garante que fique acima de tudo */
 }
 
 .logo {
-  padding: 20px;
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #3c50e0; /* Azul vibrante */
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #1c2434;
   border-bottom: 1px solid #f1f5f9;
 }
 
+.menu {
+  flex: 1;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .menu-item {
-  padding: 12px 25px;
-  color: #64748b; /* Cinza médio */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  color: #64748b;
+  text-decoration: none;
+  font-weight: 500;
   transition: all 0.2s;
 }
 
 .menu-item:hover {
-  background: #f8fafc;
+  background-color: #f8fafc;
   color: #3c50e0;
 }
 
-/* Item selecionado (exemplo) */
-.menu-item.active {
-  background: #eff4ff;
+/* Estilo para o link ativo (onde você está no momento) */
+.active {
+  background-color: #eff4ff;
   color: #3c50e0;
-  border-right: 3px solid #3c50e0;
+  border-right: 4px solid #3c50e0;
+}
+
+.badge-alerta {
+  margin-left: auto;
+  background: #eb5757;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 </style>
