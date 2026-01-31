@@ -3,34 +3,63 @@ defineProps(['dispositivo'])
 </script>
 
 <template>
-  <div class="card-dispositivo" :class="dispositivo.status.toLowerCase()">
-    <div class="header">
-      <span class="status-icon"></span>
-      <h4>{{ dispositivo.nome }}</h4>
-    </div>
-    <div class="info">
+  <div class="card">
+    <div class="status-indicator" :class="dispositivo.status.toLowerCase()"></div>
+    <div class="card-content">
+      <h3>{{ dispositivo.nome }}</h3>
       <p class="ip">{{ dispositivo.ip }}</p>
-      <p class="status-text">{{ dispositivo.status }}</p>
+      <span class="status-text" :class="dispositivo.status.toLowerCase()">
+        {{ dispositivo.status }}
+      </span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.card-dispositivo {
-  background: #2a2a2a;
-  border-radius: 8px;
-  padding: 15px;
-  border-left: 4px solid #555;
+.card {
+  background: #ffffff; /* Fundo Branco */
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  gap: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Sombra suave */
+  border: 1px solid #e2e8f0;
+  transition: transform 0.2s;
 }
-.card-dispositivo.online { border-left-color: #00bd7e; }
-.card-dispositivo.offline { border-left-color: #ff5252; }
 
-.header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.status-icon { width: 10px; height: 10px; border-radius: 50%; background: #555; }
-.online .status-icon { background: #00bd7e; box-shadow: 0 0 8px #00bd7e; }
-.offline .status-icon { background: #ff5252; }
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
 
-h4 { margin: 0; color: white; }
-.ip { font-family: monospace; color: #888; margin: 5px 0; font-size: 0.9rem; }
-.status-text { font-weight: bold; font-size: 0.75rem; text-transform: uppercase; }
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 5px;
+}
+
+.status-indicator.online { background-color: #10b981; }
+.status-indicator.offline { background-color: #ef4444; }
+
+h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1c2434;
+}
+
+.ip {
+  margin: 5px 0;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.status-text {
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-text.online { color: #10b981; }
+.status-text.offline { color: #ef4444; }
 </style>

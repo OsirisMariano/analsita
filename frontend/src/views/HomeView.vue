@@ -74,11 +74,17 @@ onMounted(() => {
   margin-bottom: 30px;
 }
 .card {
-  background: #2a2a2a;
+  background: #fff !important;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 15px;
+  border: 1px solid #e2e8f0;
   flex: 1;
 }
+
+h2, h3 .section-title {
+  color: #1c2434 !important;
+}
+
 .online { color: #00bd7e; font-weight: bold; }
 .offline { color: #ff5252; font-weight: bold; }
 .valor { font-size: 24px; color: #ffd700; }
