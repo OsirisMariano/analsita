@@ -1,4 +1,5 @@
 <script setup>
+import { store } from '@/store';
 import { ref } from 'vue'
 
 const menuItems = [
@@ -32,12 +33,14 @@ const menuItems = [
         <span class="menu-text">Câmeras</span>
       </RouterLink>
 
-      <div class="menu-item">
+      <RouterLink to="/validacao-arquivos" class="menu-item" active-class="active">
         <span class="menu-icon">📄</span>
         <span class="menu-text">Validação de Arquivos</span>
-        <span class="badge-alerta">15</span>
-      </div>
-      </nav>
+        <span v-if="store.totalErros > 0" class="badge-alerta">
+          {{ store.totalErros }}
+        </span>
+      </RouterLink>
+    </nav>
   </aside>
 </template>
 
