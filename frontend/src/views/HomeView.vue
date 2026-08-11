@@ -9,21 +9,20 @@ const ultimasTransacoes = ref([]) // Nova variável de estado
 
 const carregarDados = async () => {
   try {
-    // 1. Busca resumo e transações
-    const resStats = await fetch('http://localhost:8000/stats')
+    // Busca resumo/stats e monitoramento em paralelo
+    const [resStats, resMonit] = await Promise.all([
+      fetch('http://localhost:8000/stats'),
+      fetch('http://localhost:8000/monitoramento')
+    ])
+
     const dataStats = await resStats.json()
+    const dataMonit = await resMonit.json()
+
     resumo.value = dataStats
-    
+
     // Tenta capturar a lista. Se não existir, deixa o array vazio [] para não quebrar o código.
     ultimasTransacoes.value = dataStats.transacoes?.lista_detalhada || []
-
-    // 2. Busca monitoramento (Saúde da Pista)
-    const resMonit = await fetch('http://localhost:8000/monitoramento')
-    const dataMonit = await resMonit.json()
     dispositivos.value = dataMonit.dispositivos
-
-    // 3. Diagnóstico (Pressione F12 no navegador para ver)
-    console.log("Conteúdo de ultimasTransacoes:", ultimasTransacoes.value)
 
   } catch (error) {
     console.error("Erro ao integrar com API:", error)

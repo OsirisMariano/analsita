@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import os
 import subprocess
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
@@ -35,6 +38,26 @@ def disparar_ping(ip):
     except Exception:
         return "Erro"
 
+# Cache do status da pista: evita repetir os mesmos pings a cada requisição
+CACHE_DURACAO = 4  # segundos
+_status_cache = {"ts": 0.0, "resultado": []}
+_status_lock = threading.Lock()
+
+def _ping_equipamento(eq):
+    return (eq, disparar_ping(eq["ip"]))
+
+def obter_status_pista():
+    # Pings disparados em paralelo e resultado compartilhado entre endpoints
+    agora = time.monotonic()
+    with _status_lock:
+        if agora - _status_cache["ts"] < CACHE_DURACAO:
+            return _status_cache["resultado"]
+        with ThreadPoolExecutor(max_workers=len(EQUIPAMENTOS)) as executor:
+            resultado = list(executor.map(_ping_equipamento, EQUIPAMENTOS))
+        _status_cache["ts"] = agora
+        _status_cache["resultado"] = resultado
+        return resultado
+
 # 4. Rotas (Endpoints)
 @app.get("/")
 def home():
@@ -42,15 +65,10 @@ def home():
 
 @app.get("/monitoramento")
 def checar_rede():
-    status_pista = []
-    for eq in EQUIPAMENTOS:
-        status = disparar_ping(eq["ip"])
-        status_pista.append({
-            "nome": eq["nome"],
-            "ip": eq["ip"],
-            "status": status
-        })
-    return {"dispositivos": status_pista}
+    return {"dispositivos": [
+        {"nome": eq["nome"], "ip": eq["ip"], "status": status}
+        for eq, status in obter_status_pista()
+    ]}
 
 @app.get("/transacoes")
 def listar_transacoes():
@@ -85,8 +103,7 @@ def obter_resumo():
         }
     }
     
-    for eq in EQUIPAMENTOS:
-        status = disparar_ping(eq["ip"])
+    for eq, status in obter_status_pista():
         resumo["monitoramento"]["total"] += 1
         if status == "Online":
             resumo["monitoramento"]["online"] += 1
