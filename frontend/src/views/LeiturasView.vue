@@ -1,6 +1,4 @@
 <script setup>
-import { store } from '../store' // Importando seu store centralizado
-
 // Dados das antenas (podem ser movidos para o store.js depois)
 const antenas = [
   { nome: 'Antena Lado A', ip: '192.168.1.10', status: 'CONCLUIDO', ultimaLeitura: 'Há 2 minutos' },

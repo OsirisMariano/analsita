@@ -1,10 +1,38 @@
 @import "tailwindcss";
 
+/* Tokens de design inspirados no TailAdmin */
 @theme {
-  --color-primary: #1c2434;
+  --color-primary: #3c50e0;
+  --color-primary-dark: #3056d3;
+  --color-primary-light: #eff4ff;
+
+  --color-sidebar: #1c2434;
+  --color-sidebar-hover: #333a48;
+  --color-sidebar-text: #8a99af;
+
+  --color-success: #10b981;
+  --color-success-light: #e1f9f0;
+  --color-warning: #ffab00;
+  --color-warning-light: #fff4e5;
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+
+  --color-body: #f1f5f9;
+  --color-text: #1c2434;
+  --color-text-secondary: #637381;
+  --color-border: #e2e8f0;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
-/* Isso vai garantir que a Sidebar não "esmague" o conteúdo */
 :root {
   --sidebar-width: 260px;
+  --sidebar-width-collapsed: 80px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f1f5f9;
+  color: #1c2434;
+  -webkit-font-smoothing: antialiased;
 }
