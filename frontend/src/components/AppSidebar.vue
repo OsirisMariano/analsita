@@ -1,7 +1,7 @@
 <script setup>
 import { useRoute } from 'vue-router'
 import { store } from '@/store'
-import { Radio, LayoutDashboard, Cctv, Rss, FileCheck } from '@lucide/vue'
+import { Radio, LayoutDashboard, Cctv, Rss, FileCheck, Database } from '@lucide/vue'
 
 defineProps({
   colapsada: { type: Boolean, default: false },
@@ -18,7 +18,8 @@ const menuPrincipal = [
 const menuOperacao = [
   { to: '/cameras', label: 'Câmeras', icon: Cctv },
   { to: '/leitoras', label: 'Leitoras', icon: Rss },
-  { to: '/validacao-arquivos', label: 'Validação de Arquivos', icon: FileCheck, badge: true }
+  { to: '/validacao-arquivos', label: 'Validação de Arquivos', icon: FileCheck, badge: true },
+  { to: '/validacao-dados', label: 'Validação de Dados', icon: Database, badge: true, badgeDados: true }
 ]
 </script>
 
@@ -96,7 +97,7 @@ const menuOperacao = [
               <component :is="item.icon" :size="18" class="shrink-0" />
               <span class="flex-1" :class="colapsada ? 'lg:hidden' : ''">{{ item.label }}</span>
               <span
-                v-if="item.badge && store.totalErros > 0"
+                v-if="item.badge && (item.badgeDados ? store.totalErrosDados : store.totalErros) > 0"
                 class="rounded-full bg-danger text-white font-bold"
                 :class="[
                   colapsada
@@ -104,7 +105,7 @@ const menuOperacao = [
                     : 'px-2 py-0.5 text-[10px]'
                 ]"
               >
-                {{ store.totalErros }}
+                {{ item.badgeDados ? store.totalErrosDados : store.totalErros }}
               </span>
             </RouterLink>
           </li>

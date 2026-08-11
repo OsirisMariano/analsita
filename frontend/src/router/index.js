@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import CamerasView from '../views/CamerasView.vue'
 import ValidacaoArquivosView from '../views/ValidacaoArquivosView.vue'
+import ValidacaoDadosView from '../views/ValidacaoDadosView.vue'
 import LeitorasView from '@/views/LeiturasView.vue'
 
 const router = createRouter({
@@ -21,6 +22,11 @@ const router = createRouter({
       path: '/validacao-arquivos',
       name: 'validacao-arquivos',
       component: ValidacaoArquivosView
+    },
+    {
+      path: '/validacao-dados',
+      name: 'validacao-dados',
+      component: ValidacaoDadosView
     },
     { 
       path: '/leitoras', 
