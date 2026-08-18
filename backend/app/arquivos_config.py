@@ -1,0 +1,17 @@
+ARQUIVOS_CONFIG = [
+    {"nome": "posto.json: lado1", "caminho": "/etc/abastece/lado1/posto.json"},
+    {"nome": "concentrador.json: lado1", "caminho": "/etc/abastece/lado1/concentrador.json"},
+    {"nome": "sensor.json: lado1", "caminho": "/etc/abastece/lado1/sensor.json"},
+    {"nome": "postoAberto: lado1", "caminho": "/etc/abastece/lado1/postoAberto.json"},
+    {"nome": "posto.json: lado2", "caminho": "/etc/abastece/lado2/posto.json"},
+    {"nome": "concentrador.json: lado2", "caminho": "/etc/abastece/lado2/concentrador.json"},
+    {"nome": "sensor.json: lado2", "caminho": "/etc/abastece/lado2/sensor.json"},
+    {"nome": "postoAberto: lado2", "caminho": "/etc/abastece/lado2/postoAberto.json"},
+    {"nome": "hosts", "caminho": "/etc/hosts"},
+    {"nome": "hostname", "caminho": "/etc/hostname"},
+    {"nome": "ifadapter.ini", "caminho": "/var/abastece/SLT/configpista/ifadapter.ini"},
+    {"nome": "Licença", "caminho": "/home/pi/vpar/licenca/", "glob": "*.V2C"},
+    {"nome": "P12", "caminho": "/var/abastece/certificate/", "glob": "*.p12"},
+    {"nome": "zabbix_agent2.conf", "caminho": "/etc/zabbix/zabbix_agent2.conf"},
+    {"nome": "config.json", "caminho": "/var/DS_SFTP/config.json"},
+]

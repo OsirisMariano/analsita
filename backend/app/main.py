@@ -5,7 +5,9 @@ import os
 import subprocess
 import time
 import threading
+import glob as glob_module
 from concurrent.futures import ThreadPoolExecutor
+from arquivos_config import ARQUIVOS_CONFIG
 
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
@@ -137,3 +139,20 @@ def obter_resumo():
             print(f"Erro ao agregar DB: {e}")
 
     return resumo
+
+@app.get("/arquivos")
+def validar_arquivos():
+    resultados = []
+    for arq in ARQUIVOS_CONFIG:
+        if "glob" in arq:
+            padrao = os.path.join(arq["caminho"], arq["glob"])
+            existe = len(glob_module.glob(padrao)) > 0
+        else:
+            existe = os.path.exists(arq["caminho"])
+        resultados.append({
+            "nome": arq["nome"],
+            "caminho": arq["caminho"],
+            "status": "OK" if existe else "ERRO"
+        })
+    total_erros = sum(1 for r in resultados if r["status"] == "ERRO")
+    return {"arquivos": resultados, "total_erros": total_erros}
