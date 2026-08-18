@@ -152,3 +152,160 @@ A Sprint V1 Funcional entregou um sistema funcional com dados reais via API. Por
 - Autenticação completa com login/senha (esta sprint usa apenas API Key)
 - Rate limiting nos endpoints
 - Logging estruturado e auditoria de acessos
+
+---
+
+## Product Backlog — Sprint de Segurança
+
+**Metodologia:** Scrum + Kanban
+**Capacidade da sprint:** 42 Story Points
+**Duração estimada:** 6 dias úteis
+
+---
+
+### Épico 1: CORS + Autenticação — Branch `feature/cors-auth` (8 SP)
+
+| ID | Tarefa | Critérios de aceite | Prioridade | SP | Status |
+|---|---|---|---|---|---|
+| SEC-01 | Restringir `allow_origins` no CORS | `allow_origins` lista apenas domínios do frontend (não `*`) | P0 | 2 | BACKLOG |
+| SEC-02 | Restringir `allow_methods` para `GET` | `allow_methods=["GET"]` | P0 | 1 | BACKLOG |
+| SEC-03 | Criar middleware de API Key | Endpoint retorna 403 se header `X-API-Key` ausente ou inválido | P0 | 3 | BACKLOG |
+| SEC-04 | Criar variável `API_KEY` no `.env` do backend | `API_KEY=chave-secreta` no `.env.example` | P0 | 1 | BACKLOG |
+| SEC-05 | Atualizar `.env.example` do backend | Template com `API_KEY` e `CORS_ORIGINS` | P1 | 1 | BACKLOG |
+
+---
+
+### Épico 2: Validação de Input — Branch `feature/input-validation` (6 SP)
+
+| ID | Tarefa | Critérios de aceite | Prioridade | SP | Status |
+|---|---|---|---|---|---|
+| SEC-06 | Validar formato de IP em `disparar_ping()` | Usar `ipaddress.ip_address()` — IP inválido retorna `"Erro"` sem chamar subprocess | P0 | 2 | BACKLOG |
+| SEC-07 | Criar whitelist de paths em `validador.py` | Constante `ALLOWED_PREFIXES` com `/etc/abastece/`, `/var/abastece/`, `/var/DS_SFTP/` | P1 | 2 | BACKLOG |
+| SEC-08 | Validar path antes de ler arquivo | `extrair_valor()` retorna `"acesso_nao_permitido"` se path fora da whitelist | P1 | 1 | BACKLOG |
+| SEC-09 | Testar com path malicioso | Request com path `../../etc/shadow` retorna erro genérico | P1 | 1 | BACKLOG |
+
+---
+
+### Épico 3: Docker Hardening — Branch `feature/docker-hardening` (10 SP)
+
+| ID | Tarefa | Critérios de aceite | Prioridade | SP | Status |
+|---|---|---|---|---|---|
+| SEC-10 | Criar `appuser` no Dockerfile do backend | `groupadd` + `useradd` + `USER appuser` antes do CMD | P0 | 2 | BACKLOG |
+| SEC-11 | Criar `appuser` no Dockerfile do frontend | `groupadd` + `useradd` + `USER appuser` antes do CMD | P0 | 2 | BACKLOG |
+| SEC-12 | Adicionar `cap_add: [NET_RAW]` no docker-compose | Backend consegue fazer ping com usuário não-root | P0 | 1 | BACKLOG |
+| SEC-13 | Tornar mounts read-only no docker-compose | `:ro` em `./backend/app`, `./scripts`, todos os `mock_data/*` | P1 | 1 | BACKLOG |
+| SEC-14 | Criar `.dockerignore` no backend | Excluir `.git`, `.env`, `__pycache__`, `*.pyc`, `tests/` | P1 | 1 | BACKLOG |
+| SEC-15 | Criar `.dockerignore` na raiz | Excluir `.git`, `node_modules/`, `data/*.db`, `.env` | P1 | 1 | BACKLOG |
+| SEC-16 | Remover `--reload` do `entrypoint.sh` | `exec uvicorn app.main:app --host 0.0.0.0 --port 8000` (sem `--reload`) | P1 | 1 | BACKLOG |
+| SEC-17 | Testar containers com mounts read-only | Container inicia normalmente, arquivos não modificáveis de dentro | P2 | 1 | BACKLOG |
+
+---
+
+### Épico 4: Error Handling — Branch `feature/error-handling` (4 SP)
+
+| ID | Tarefa | Critérios de aceite | Prioridade | SP | Status |
+|---|---|---|---|---|---|
+| SEC-18 | Substituir `str(e)` no endpoint `/transacoes` | Retornar `"Erro interno ao acessar o banco de dados"` | P1 | 1 | BACKLOG |
+| SEC-19 | Substituir `str(e)` no endpoint `/validacao-dados` | Retornar mensagem genérica, log server-side | P1 | 1 | BACKLOG |
+| SEC-20 | Substituir `f"erro_leitura: {e}"` em `validador.py` | Retornar `"erro_leitura"` (sem detalhe), log com `print()` | P1 | 1 | BACKLOG |
+| SEC-21 | Verificar se há outros `str(e)` expostos | Grep por `str(e)` e `f"` no `main.py` — nenhum exposto ao cliente | P2 | 1 | BACKLOG |
+
+---
+
+### Épico 5: Configuração + Segredos — Branch `feature/config-secrets` (8 SP)
+
+| ID | Tarefa | Critérios de aceite | Prioridade | SP | Status |
+|---|---|---|---|---|---|
+| SEC-22 | Externalizar `EQUIPAMENTOS` do `main.py` | Ler de variável de ambiente `EQUIPAMENTOS` (JSON), fallback para valor hardcoded | P1 | 3 | BACKLOG |
+| SEC-23 | Externalizar `DB_PATH` | Ler de variável de ambiente `DB_PATH`, fallback para path atual | P1 | 1 | BACKLOG |
+| SEC-24 | Externalizar valores de `validacoes_config.py` | `CONVENIADO_CODE`, `NUC_IP`, `SFTP_SERVER` via env vars | P2 | 2 | BACKLOG |
+| SEC-25 | Substituir IP do Zabbix no mock | `192.168.1.100` → `192.0.2.1` (RFC 5737) | P1 | 1 | BACKLOG |
+| SEC-26 | Criar `.env.example` do backend | Template com todas as variáveis e valores placeholder | P2 | 1 | BACKLOG |
+
+---
+
+### Épico 6: Frontend Produção — Branch `feature/frontend-prod` (6 SP)
+
+| ID | Tarefa | Critérios de aceite | Prioridade | SP | Status |
+|---|---|---|---|---|---|
+| SEC-27 | Alterar Dockerfile do frontend para build de produção | `RUN npm run build` + `RUN npm install -g serve` | P1 | 2 | BACKLOG |
+| SEC-28 | Alterar CMD para `serve` | `CMD ["serve", "-s", "dist", "-l", "5173"]` | P1 | 1 | BACKLOG |
+| SEC-29 | Remover `--host` e `args` do docker-compose | Frontend não precisa mais de `args: VITE_API_URL` | P1 | 1 | BACKLOG |
+| SEC-30 | Verificar se `.env` funciona em produção | `VITE_API_URL` embutido no build via `docker build --build-arg` | P2 | 1 | BACKLOG |
+| SEC-31 | Testar frontend em produção | `http://localhost:5173` carrega normalmente, sem HMR | P2 | 1 | BACKLOG |
+
+---
+
+### Resumo da Sprint
+
+| Épico | Story Points | Branch | Dias estimados |
+|---|---|---|---|
+| 1 — CORS + Auth | 8 SP | `feature/cors-auth` | Dia 3-4 |
+| 2 — Input Validation | 6 SP | `feature/input-validation` | Dia 1-2 |
+| 3 — Docker Hardening | 10 SP | `feature/docker-hardening` | Dia 1-2 |
+| 4 — Error Handling | 4 SP | `feature/error-handling` | Dia 5 |
+| 5 — Config Secrets | 8 SP | `feature/config-secrets` | Dia 3-4 |
+| 6 — Frontend Prod | 6 SP | `feature/frontend-prod` | Dia 6 |
+| **TOTAL** | **42 SP** | **6 branches** | **6 dias** |
+
+---
+
+### Fluxo Kanban
+
+```
+┌─────────────┐    ┌─────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────┐
+│   BACKLOG   │───▶│  TO DO  │───▶│ IN PROGRESS  │───▶│ CODE REVIEW │───▶│ DONE │
+│  (SEC-01..  │    │ (Sprint │    │  (1 devs)    │    │  (PO rev)   │    │      │
+│   SEC-31)   │    │  Plan)  │    │              │    │             │    │      │
+└─────────────┘    └─────────┘    └──────────────┘    └─────────────┘    └──────┘
+```
+
+**Regras Kanban:**
+- No máximo **2 tarefas** em IN PROGRESS por vez
+- Tarefa só vai para DONE após **PO review + teste manual**
+- Bloqueios são sinalizados imediatamente
+
+---
+
+### Ordem de Execução Recomendada
+
+```
+Dia 1-2:  Épico 3 (Docker) + Épico 2 (Input Validation) — paralelos
+          └─ SEC-10 a SEC-17 + SEC-06 a SEC-09
+
+Dia 3-4:  Épico 1 (CORS Auth) + Épico 5 (Config Secrets) — paralelos
+          └─ SEC-01 a SEC-05 + SEC-22 a SEC-26
+
+Dia 5:    Épico 4 (Error Handling) — depende do main.py limpo
+          └─ SEC-18 a SEC-21
+
+Dia 6:    Épico 6 (Frontend Prod) + merge final
+          └─ SEC-27 a SEC-31 → merge todas na main
+```
+
+---
+
+### Dependências entre Épicos
+
+```
+Épico 3 (Docker)  ──── sem dependências, pode iniciar primeiro
+Épico 2 (Input)   ──── sem dependências, pode iniciar primeiro
+Épico 1 (CORS)    ──── sem dependências, pode iniciar primeiro
+Épico 5 (Config)  ──── sem dependências, pode iniciar primeiro
+Épico 4 (Errors)  ──── depende de Épico 1 (mesmo main.py)
+Épico 6 (Front)   ──── sem dependências, pode iniciar primeiro
+```
+
+---
+
+### Definição de Pronto (Definition of Done)
+
+- [ ] Código implementado e testado localmente
+- [ ] Docker compose up roda sem erros
+- [ ] Nenhum `str(e)` exposto na API
+- [ ] Container roda como não-root
+- [ ] Mounts são read-only (exceto `/data`)
+- [ ] API Key obrigatória em todos os endpoints
+- [ ] PO fez review manual no browser
+- [ ] Commit na branch correspondente
+- [ ] Merge na main após review
