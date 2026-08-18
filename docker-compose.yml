@@ -5,6 +5,7 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./data:/var/abastece/dados
+      - ./scripts:/scripts
     ports:
       - "8000:8000"
 

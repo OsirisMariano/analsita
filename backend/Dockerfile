@@ -24,5 +24,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia o restante do código do backend
 COPY . .
 
-# Comando para iniciar a API com recarregamento automático (ideal para desenvolvimento)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Variável de ambiente para o caminho do banco de dados
+ENV DB_PATH=/var/abastece/dados/abastece.db
+
+# Torna o entrypoint executável
+RUN chmod +x /app/entrypoint.sh
+
+# Comando de entrada: verifica o banco e inicia a API
+CMD ["/app/entrypoint.sh"]
