@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   api:
     build: ./backend
@@ -11,7 +9,10 @@ services:
       - "8000:8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://api:8000
     container_name: analista_web
     volumes:
       - ./frontend:/app

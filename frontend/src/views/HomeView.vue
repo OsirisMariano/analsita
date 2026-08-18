@@ -11,8 +11,8 @@ const carregarDados = async () => {
   try {
     // Busca resumo/stats e monitoramento em paralelo
     const [resStats, resMonit] = await Promise.all([
-      fetch('http://localhost:8000/stats'),
-      fetch('http://localhost:8000/monitoramento')
+      fetch(`${import.meta.env.VITE_API_URL}/stats`),
+      fetch(`${import.meta.env.VITE_API_URL}/monitoramento`)
     ])
 
     const dataStats = await resStats.json()
