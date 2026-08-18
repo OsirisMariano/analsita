@@ -7,7 +7,7 @@ import time
 import threading
 import glob as glob_module
 from concurrent.futures import ThreadPoolExecutor
-from arquivos_config import ARQUIVOS_CONFIG
+from .arquivos_config import ARQUIVOS_CONFIG
 
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
