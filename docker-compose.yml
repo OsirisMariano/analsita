@@ -6,8 +6,9 @@ services:
       - ./backend/app:/app/app
       - ./data:/var/abastece/dados
       - ./scripts:/scripts
-      - ./mock_data/etc:/etc:ro
-      - ./mock_data/var:/var/abastece:ro
+      - ./mock_data/etc/abastece:/etc/abastece:ro
+      - ./mock_data/etc/zabbix:/etc/zabbix:ro
+      - ./mock_data/var/abastece:/var/abastece:ro
       - ./mock_data/home:/home:ro
     ports:
       - "8000:8000"
