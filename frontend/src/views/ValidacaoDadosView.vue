@@ -1,12 +1,16 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { store } from '../store'
 import { Database, CheckCircle2, XCircle, Files, ChevronDown } from '@lucide/vue'
 
 const aberto = reactive({})
-for (const validacao of store.dadosValidacao.validacoes) {
-  aberto[validacao.dado] = false
-}
+
+onMounted(async () => {
+  await store.carregarDadosValidacao()
+  for (const v of store.dadosValidacao.validacoes || []) {
+    aberto[v.dado] = false
+  }
+})
 
 const alternar = (dado) => {
   aberto[dado] = !aberto[dado]
@@ -47,7 +51,7 @@ const alternar = (dado) => {
         </span>
         <div>
           <p class="text-xs text-gray-500 uppercase tracking-wider">Arquivos Validados</p>
-          <p class="font-bold text-gray-800">{{ store.dadosValidacao.arquivos_validados_total }}</p>
+          <p class="font-bold text-gray-800">{{ store.dadosValidacao.arquivos_validados_total || 0 }}</p>
         </div>
       </div>
 
@@ -57,14 +61,14 @@ const alternar = (dado) => {
         </span>
         <div>
           <p class="text-xs text-gray-500 uppercase tracking-wider">Validações</p>
-          <p class="font-bold text-gray-800">{{ store.dadosValidacao.validacoes.length }}</p>
+          <p class="font-bold text-gray-800">{{ (store.dadosValidacao.validacoes || []).length }}</p>
         </div>
       </div>
     </div>
 
     <!-- Validações -->
     <div
-      v-for="validacao in store.dadosValidacao.validacoes"
+      v-for="validacao in store.dadosValidacao.validacoes || []"
       :key="validacao.dado"
       class="mb-4"
     >
