@@ -8,6 +8,7 @@ services:
       - ./scripts:/scripts
       - ./mock_data/etc/abastece:/etc/abastece:ro
       - ./mock_data/etc/zabbix:/etc/zabbix:ro
+      - ./mock_data/etc/logrotate.d:/etc/logrotate.d:ro
       - ./mock_data/var/abastece/SLT:/var/abastece/SLT:ro
       - ./mock_data/var/abastece/certificate:/var/abastece/certificate:ro
       - ./mock_data/home:/home:ro

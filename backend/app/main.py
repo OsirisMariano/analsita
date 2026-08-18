@@ -8,6 +8,8 @@ import threading
 import glob as glob_module
 from concurrent.futures import ThreadPoolExecutor
 from .arquivos_config import ARQUIVOS_CONFIG
+from .validacoes_config import VALIDACOES
+from .validador import validar_categoria
 
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
@@ -156,3 +158,28 @@ def validar_arquivos():
         })
     total_erros = sum(1 for r in resultados if r["status"] == "ERRO")
     return {"arquivos": resultados, "total_erros": total_erros}
+
+@app.get("/validacao-dados")
+def validar_dados():
+    validacoes_resultado = []
+    for val in VALIDACOES:
+        arquivos_resultado = validar_categoria(val)
+        total = len(arquivos_resultado)
+        erros = sum(1 for a in arquivos_resultado if a["status"] != "ok")
+
+        validacoes_resultado.append({
+            "dado": val["dado"],
+            "valor": val["valor"],
+            "total_arquivos": total,
+            "status": "ok" if erros == 0 else f"{erros} erro(s)",
+            "arquivos": arquivos_resultado
+        })
+
+    total_validacoes = sum(v["total_arquivos"] for v in validacoes_resultado)
+    total_categorias_com_erro = sum(1 for v in validacoes_resultado if v["status"] != "ok")
+
+    return {
+        "arquivos_validados_total": total_validacoes,
+        "status_geral": "sucesso" if total_categorias_com_erro == 0 else "erro",
+        "validacoes": validacoes_resultado
+    }
