@@ -6,9 +6,11 @@ services:
     cap_add:
       - NET_RAW
     volumes:
-      - ./backend/app:/app/app
+      # Código montado como somente-leitura (SEC-13): o container não pode
+      # alterar o próprio código em runtime; /data permanece gravável (SQLite)
+      - ./backend/app:/app/app:ro
       - ./data:/var/abastece/dados
-      - ./scripts:/scripts
+      - ./scripts:/scripts:ro
       - ./mock_data/etc/abastece:/etc/abastece:ro
       - ./mock_data/etc/zabbix:/etc/zabbix:ro
       - ./mock_data/etc/logrotate.d:/etc/logrotate.d:ro
