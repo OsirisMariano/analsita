@@ -1,7 +1,12 @@
-node_modules
-dist
-.vite
+# Espelha o .dockerignore da raiz — necessário porque o build do compose
+# usa ./frontend como contexto, e o Docker só lê o ignore da raiz DO CONTEXTO
+# Git
 .git
-*.log
-.vscode
-.DS_Store
+.gitignore
+
+# Dependências
+**/node_modules
+
+# Ambiente e segredos — nunca entrar na imagem
+**/.env
+**/.env.*

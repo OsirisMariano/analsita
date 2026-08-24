@@ -1,0 +1,15 @@
+# Git
+.git
+.gitignore
+
+# Ambiente e segredos — nunca entrar na imagem
+.env
+.env.*
+
+# Python (qualquer profundidade — sem ** casa só na raiz do contexto)
+**/__pycache__
+**/*.pyc
+
+# Testes — não vão para produção
+tests/
+.pytest_cache/
