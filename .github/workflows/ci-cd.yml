@@ -1,11 +1,11 @@
 name: CI/CD Pipeline - Analista SemParar
 
-# Dispara a pipeline em envios ou PRs direcionados à branch principal
+# Dispara a pipeline em envios ou PRs direcionados às branches principais e à develop
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "develop" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "develop" ]
 
 jobs:
   # --------------------------------------------------------
