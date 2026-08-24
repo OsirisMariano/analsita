@@ -1,6 +1,18 @@
 import json
 import os
 
+# Whitelist dos únicos prefixos de caminho que a aplicação pode ler.
+# Emenda do PO: inclui /etc/zabbix/ e /etc/logrotate.d/, consumidos
+# pelo endpoint /validacao-dados. O consumo desta lista (recusa de
+# qualquer path fora dela) acontece em extrair_valor().
+ALLOWED_PREFIXES = (
+    "/etc/abastece/",
+    "/var/abastece/",
+    "/var/DS_SFTP/",
+    "/etc/zabbix/",
+    "/etc/logrotate.d/",
+)
+
 
 def extrair_valor(caminho, regra):
     """Lê arquivo e extrai valor conforme o tipo da regra."""
