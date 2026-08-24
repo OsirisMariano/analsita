@@ -125,6 +125,31 @@ A Sprint V1 Funcional entregou um sistema funcional com dados reais via API. Por
 | Mock Zabbix IP | `192.168.1.100` (real) | `192.0.2.1` (RFC 5737) |
 | Frontend | Vite dev server | Build de produção + serve |
 
+## Estratégia de Branches (Git Flow Simplificado)
+
+Utilizamos **Git Flow simplificado** com uma branch `develop` como estágio de integração entre as features e a produção.
+
+```
+main (produção — sempre estável e deployável)
+  └── develop (integração — onde todas as features convergem antes de ir para produção)
+        ├── feature/docker-hardening
+        ├── feature/input-validation
+        ├── feature/config-secrets
+        ├── feature/cors-auth
+        ├── feature/error-handling
+        └── feature/frontend-prod
+```
+
+**Regras:**
+- `main` é **somente leitura** durante a sprint — nada é commitado diretamente nela
+- `develop` é criada a partir de `main` no início da sprint
+- Cada feature branch é criada a partir de `develop`
+- Features são mergeadas em `develop` após validação individual
+- `develop` → `main` é feito **uma única vez**, ao final da sprint, após validação completa
+- Se `develop` acumular problemas, basta não mergeá-la em `main`
+
+---
+
 ## Branches planejadas
 
 | # | Branch | Entrega | Vulnerabilidades |
@@ -253,16 +278,25 @@ A Sprint V1 Funcional entregou um sistema funcional com dados reais via API. Por
 ### Fluxo Kanban
 
 ```
-┌─────────────┐    ┌─────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────┐
-│   BACKLOG   │───▶│  TO DO  │───▶│ IN PROGRESS  │───▶│ CODE REVIEW │───▶│ DONE │
-│  (SEC-01..  │    │ (Sprint │    │  (1 devs)    │    │  (PO rev)   │    │      │
-│   SEC-31)   │    │  Plan)  │    │              │    │             │    │      │
-└─────────────┘    └─────────┘    └──────────────┘    └─────────────┘    └──────┘
+┌─────────────┐    ┌─────────┐    ┌──────────────┐    ┌──────────────────┐    ┌──────────────┐    ┌──────┐
+│   BACKLOG   │───▶│  TO DO  │───▶│ IN PROGRESS  │───▶│ MERGE → develop  │───▶│ CODE REVIEW  │───▶│ DONE │
+│  (SEC-01..  │    │ (Sprint │    │  (1 devs)    │    │  (feature merge) │    │  (PO rev)    │    │      │
+│   SEC-31)   │    │  Plan)  │    │              │    │                  │    │              │    │      │
+└─────────────┘    └─────────┘    └──────────────┘    └──────────────────┘    └──────────────┘    └──────┘
+                                                                                                       │
+                                                                                                       ▼
+                                                                                               ┌──────────────┐
+                                                                                               │ MERGE → main │
+                                                                                               │ (final sprint│
+                                                                                               │  ou manual)  │
+                                                                                               └──────────────┘
 ```
 
 **Regras Kanban:**
 - No máximo **2 tarefas** em IN PROGRESS por vez
-- Tarefa só vai para DONE após **PO review + teste manual**
+- Feature só vai para MERGE → develop após **validação local** (docker compose up + teste manual)
+- Tarefa só vai para DONE após **PO review no develop + teste manual**
+- Merge `develop` → `main` é feito **uma única vez ao final da sprint**, após todas as features validadas
 - Bloqueios são sinalizados imediatamente
 
 ---
@@ -270,17 +304,26 @@ A Sprint V1 Funcional entregou um sistema funcional com dados reais via API. Por
 ### Ordem de Execução Recomendada
 
 ```
+Pré-sprint:
+  Criar branch develop a partir de main
+
 Dia 1-2:  Épico 3 (Docker) + Épico 2 (Input Validation) — paralelos
           └─ SEC-10 a SEC-17 + SEC-06 a SEC-09
+          └─ Merge feature → develop
 
 Dia 3-4:  Épico 1 (CORS Auth) + Épico 5 (Config Secrets) — paralelos
           └─ SEC-01 a SEC-05 + SEC-22 a SEC-26
+          └─ Merge feature → develop
 
-Dia 5:    Épico 4 (Error Handling) — depende do main.py limpo
+Dia 5:    Épico 4 (Error Handling) — depende de Épico 1
           └─ SEC-18 a SEC-21
+          └─ Merge feature → develop
 
-Dia 6:    Épico 6 (Frontend Prod) + merge final
-          └─ SEC-27 a SEC-31 → merge todas na main
+Dia 6:    Épico 6 (Frontend Prod)
+          └─ SEC-27 a SEC-31
+          └─ Merge feature → develop
+          └─ Validação completa no develop (docker compose up, todos os endpoints)
+          └─ Merge develop → main (sprint finalizada)
 ```
 
 ---
@@ -300,12 +343,21 @@ Dia 6:    Épico 6 (Frontend Prod) + merge final
 
 ### Definição de Pronto (Definition of Done)
 
+**Para cada feature individual (DONE por feature):**
 - [ ] Código implementado e testado localmente
-- [ ] Docker compose up roda sem erros
+- [ ] Docker compose up roda sem erros (na feature)
 - [ ] Nenhum `str(e)` exposto na API
 - [ ] Container roda como não-root
 - [ ] Mounts são read-only (exceto `/data`)
 - [ ] API Key obrigatória em todos os endpoints
 - [ ] PO fez review manual no browser
-- [ ] Commit na branch correspondente
-- [ ] Merge na main após review
+- [ ] Commit na branch feature correspondente
+- [ ] Merge da feature → `develop`
+
+**Para a sprint completa (DONE por sprint):**
+- [ ] Todas as 6 features mergeadas em `develop`
+- [ ] `docker compose up` completo no `develop` sem erros
+- [ ] Teste manual de todos os endpoints no `develop`
+- [ ] PO validou o sistema integrado no `develop`
+- [ ] Merge `develop` → `main`
+- [ ] `main` estável e deployável
