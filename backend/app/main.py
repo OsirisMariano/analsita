@@ -6,6 +6,7 @@ import subprocess
 import time
 import threading
 import glob as glob_module
+import ipaddress
 from concurrent.futures import ThreadPoolExecutor
 from .arquivos_config import ARQUIVOS_CONFIG
 from .validacoes_config import VALIDACOES
@@ -35,8 +36,16 @@ EQUIPAMENTOS = [
 # 3. Funções Auxiliares
 def disparar_ping(ip):
     try:
+        # Portão de entrada (SEC-06): só executa subprocess se o input é
+        # um IP sintaticamente válido — hostnames e injeções morrem aqui,
+        # antes de chegar perto do sistema operacional.
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return "Erro"
+
+    try:
         # Executa o ping: -c 1 (1 pacote), -W 1 (espera 1 seg)
-        comando = ["ping", "-c", "1", "-W", "1", ip]
+        comando = ["ping", "-c", "1", "-W", "1", str(ip)]
         resultado = subprocess.run(comando, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return "Online" if resultado.returncode == 0 else "Offline"
     except Exception:
