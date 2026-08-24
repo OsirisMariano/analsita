@@ -2,6 +2,9 @@ services:
   api:
     build: ./backend
     container_name: analista_api
+    # Permite sockets ICMP (ping) com o processo rodando como não-root
+    cap_add:
+      - NET_RAW
     volumes:
       - ./backend/app:/app/app
       - ./data:/var/abastece/dados
