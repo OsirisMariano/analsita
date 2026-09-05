@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import os
+import json
 import subprocess
 import time
 import threading
@@ -24,14 +25,30 @@ app.add_middleware(
 )
 
 # 2. Configurações e Constantes
-DB_PATH = "/var/abastece/dados/abastece.db"
+DB_PATH = os.environ.get("DB_PATH", "/var/abastece/dados/abastece.db")
 
-EQUIPAMENTOS = [
+# EQUIPAMENTOS pode vir do ambiente como JSON (ex: [{"id":..., "ip":..., "nome":...}]).
+# Se a variável não existir ou for um JSON inválido, usa o fallback abaixo.
+_DEFAULT_EQUIPAMENTOS = [
     {"id": "antena_01", "ip": "192.168.1.10", "nome": "Antena Lado A"},
     {"id": "antena_02", "ip": "192.168.1.11", "nome": "Antena Lado B"},
     {"id": "sensor_vpar", "ip": "192.168.1.20", "nome": "Câmera VPAR"},
     {"id": "gateway", "ip": "8.8.8.8", "nome": "Saída Internet"} 
 ]
+
+def _carregar_equipamentos():
+    raw = os.environ.get("EQUIPAMENTOS", "")
+    if not raw:
+        return _DEFAULT_EQUIPAMENTOS
+    try:
+        dados = json.loads(raw)
+    except json.JSONDecodeError:
+        return _DEFAULT_EQUIPAMENTOS
+    if not isinstance(dados, list):
+        return _DEFAULT_EQUIPAMENTOS
+    return dados
+
+EQUIPAMENTOS = _carregar_equipamentos()
 
 # 3. Funções Auxiliares
 def disparar_ping(ip):
