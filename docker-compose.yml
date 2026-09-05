@@ -2,6 +2,12 @@ services:
   api:
     build: ./backend
     container_name: analista_api
+    # Injeção de variáveis de ambiente (EQUIPAMENTOS, DB_PATH, segredos).
+    # Copie backend/.env.example para backend/.env antes de usar.
+    # required:false → se o .env não existir, o compose sobe mesmo assim (usa fallbacks do código).
+    env_file:
+      - path: backend/.env
+        required: false
     # Permite sockets ICMP (ping) com o processo rodando como não-root
     cap_add:
       - NET_RAW
