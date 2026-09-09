@@ -5,6 +5,75 @@
 
 ---
 
+## 🗓️ Quarta, 09/09 — Épico 1 entregue
+
+### Entregue (4 de 6 épicos)
+- ✅ **Épico 1 — CORS + Autenticação** → PR #59 aberto na develop (`feature/cors-auth`)
+- Commits: `4066527` (SEC-01..05) + `efaaa42` (httpx como dep de teste)
+- Issues cobertas: **#19, #20, #21, #22, #23** — **aguardando aprovação do PO no PR #59** (não mergeado ainda)
+
+### O que foi feito (SEC-01..05)
+- `SEC-01` — `allow_origins` restrito via env `CORS_ORIGINS` (default `http://localhost:5173`)
+- `SEC-02` — `allow_methods=["GET"]` (antes `["*"]`)
+- `SEC-03` — Middleware `ApiKeyMiddleware` → **403** sem header `X-API-Key` válido (compara com `hmac.compare_digest`)
+- `SEC-04` — `API_KEY` lida de env var (fallback dev `dev-key-not-secure`)
+- `SEC-05` — `.env.example` consolidado (`CORS_ORIGINS` + `API_KEY`)
+- Rotas isentas da chave: `/health`, `/docs`, `/openapi.json`, `/redoc`
+
+### Validação (gate + ponta a ponta no container)
+- **18 testes pytest verdes** (13 antigos + 5 novos em `tests/test_seguranca.py`) + flake8 (E9,F63,F7,F82) limpo
+- CI 3/3 checks passando (Backend, Frontend, Docker Build)
+- No container real: sem chave → `403` · chave errada → `403` · chave válida → `200` · `/health` → `200`
+- CORS: origin `localhost:5173` retorna `access-control-allow-origin`; origin externa **não** recebe header
+
+### Gotchas novos acumulados
+- `TestClient` do starlette/FastAPI 0.109 **exige `httpx` explicitamente** → adicionado `httpx==0.24.1` ao `backend/requirements.txt` (CI fail `ModuleNotFoundError: httpx` na 1ª tentativa)
+- **Pra não quebrar o TestClient antigo**: fixar `httpx==0.24.1` (versão recente quebra com `unexpected keyword argument 'app'`)
+- `JSONResponse` usa `content=`, **não** `detail=` (esse é próprio do `HTTPException`)
+- ⚠️ Frontend agora precisa enviar o header `X-API-Key` em toda request, e `allow_headers` baixou para `["X-API-Key"]` — pode quebrar chamadas que antes passavam sem chave
+
+### Restante da sprint (prazos vencidos)
+- **Épico 4 — Error Handling** (#36–39, prazo 28/08) ⚠️ depende do É1 — **próximo** (assim que o PR #59 for mergeado)
+- **Épico 6 — Frontend Produção** (#45–49, prazo 31/08) — último, muda runtime do frontend
+- Backlog futuro (#51–55): fora desta sprint
+- Fim: release PR `develop → main` → épico vai para produção
+
+---
+
+## 🗓️ Sábado, 05/09 — Retomada: Épico 5 entregue
+
+### Entregue (3 de 6 épicos)
+- ✅ **Épico 5 — Configuração + Segredos** → PR #58 merged na develop (1 commit `cca0d97`: SEC-22..26)
+- Issues fechadas: #40, #41, #42, #43, #44 + épico pai **#17**
+
+### O que foi feito (SEC-22..26)
+- `SEC-22` — `EQUIPAMENTOS` lido de env var JSON com fallback (`backend/app/main.py`)
+- `SEC-23` — `DB_PATH` lido de env var com fallback
+- `SEC-24` — `CONVENIADO_CODE`, `SFTP_SERVER`, `NUC_IP` via env (`backend/app/validacoes_config.py`)
+- `SEC-25` — IP do Zabbix mock → `192.0.2.1` (RFC 5737) em `mock_data/etc/zabbix/zabbix_agent2.conf`
+- `SEC-26` — criado `backend/.env.example` (placeholders, sem valores reais)
+- `docker-compose.yml` — serviço `api` injeta `backend/.env` com `required:false` (sobe mesmo sem o arquivo, usando fallbacks)
+
+### Validação (gate + ponta a ponta no container)
+- 13 testes pytest verdes + flake8 limpo + CI 3/3 checks passando (Backend, Frontend, Docker Build)
+- **Sem `.env`** → fallbacks: 4 equipamentos fixos, 02896 / DS_ABAST.02896_1 / 192.168.212.21
+- **Com `.env`** → `/monitoramento` e `/validacao-dados` refletem os overrides (ex: 2 equipamentos, 7777 / DS_ABAST.7777_1 / 10.10.10.10)
+- `.env` real ignorado pelo `.gitignore`; apenas `.env.example` versionado
+
+### Gotchas novos acumulados
+- `env_file` com `required:false` (compose ≥2.24) deixa o compose subir sem o `.env` — ideal para fallbacks
+- Para as env vars surtirem efeito no container, o compose precisa injetá-las (`env_file`); o Dockerfile por si só não expõe `EQUIPAMENTOS`/segredos
+- Branch feature deletada em seguida do merge (local + remota) — retomar a partir de `develop`
+
+### Restante da sprint (prazos todos vencidos)
+- **Épico 1 — CORS + API Key** (#19–23, prazo 27/08) — Ó próximo, par urgente (rodar após o É5: mesmos arquivos)
+- **Épico 4 — Error Handling** (#36–39, prazo 28/08) ⚠️ depende do É1
+- **Épico 6 — Frontend Produção** (#45–49, prazo 31/08) — último, muda runtime do frontend
+- Backlog futuro (#51–55): fora desta sprint
+- Fim: release PR `develop → main` → épico vai para produção
+
+---
+
 ## 🗓️ Terça, 25/08 — Fila do dia (preparada na segunda)
 
 ### Sequência planejada
