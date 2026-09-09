@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 import sqlite3
 import os
 import json
@@ -8,6 +10,7 @@ import time
 import threading
 import glob as glob_module
 import ipaddress
+import hmac
 from concurrent.futures import ThreadPoolExecutor
 from .arquivos_config import ARQUIVOS_CONFIG
 from .validacoes_config import VALIDACOES
@@ -16,13 +19,43 @@ from .validador import validar_categoria
 # 1. Instância do App (Sempre antes das rotas)
 app = FastAPI(title="Analista SemParar - V1")
 
+# SEC-01: origins restrito via CORS_ORIGINS (ex: "http://localhost:5173,http://10.0.0.1:5173")
+_cors_origins_raw = os.environ.get("CORS_ORIGINS", "")
+_cors_origins = [
+    o.strip() for o in _cors_origins_raw.split(",") if o.strip()
+] if _cors_origins_raw else ["http://localhost:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite requisições de qualquer origem (ideal para dev)
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
-    allow_headers=["*"],  # Permite todos os headers
+    allow_methods=["GET"],  # SEC-02: apenas GET
+    allow_headers=["X-API-Key"],
 )
+
+# SEC-04 / SEC-03: API_KEY via variável de ambiente
+# Em desenvolvimento, usa um valor fixo para não bloquear o workflow.
+_API_KEY = os.environ.get("API_KEY", "dev-key-not-secure")
+
+# SEC-03: Middleware — exige header X-API-Key em todas as rotas exceto /health
+Rotas_Isentas = {"/health", "/docs", "/openapi.json", "/redoc"}
+
+
+class ApiKeyMiddleware(BaseHTTPMiddleware):
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in Rotas_Isentas:
+            return await call_next(request)
+        chave = request.headers.get("X-API-Key")
+        if not chave or not hmac.compare_digest(chave, _API_KEY):
+            return JSONResponse(
+                content={"detail": "API key inválida ou ausente"},
+                status_code=403,
+            )
+        return await call_next(request)
+
+
+app.add_middleware(ApiKeyMiddleware)
 
 # 2. Configurações e Constantes
 DB_PATH = os.environ.get("DB_PATH", "/var/abastece/dados/abastece.db")
