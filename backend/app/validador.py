@@ -29,7 +29,8 @@ def extrair_valor(caminho, regra):
     try:
         conteudo = open(caminho, encoding="utf-8", errors="replace").read()
     except Exception as e:
-        return None, f"erro_leitura: {e}"
+        print(f"erro_leitura: {e}")
+        return None, "erro_leitura"
 
     tipo = regra["tipo"]
 

@@ -148,7 +148,8 @@ def listar_transacoes():
         conn.close()
         return {"total": len(resultado), "dados": resultado}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao ler banco: {str(e)}")
+        print(f"Erro ao ler banco: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao acessar o banco de dados")
 
 @app.get("/health")
 def health_check():
@@ -220,25 +221,34 @@ def validar_arquivos():
 
 @app.get("/validacao-dados")
 def validar_dados():
-    validacoes_resultado = []
-    for val in VALIDACOES:
-        arquivos_resultado = validar_categoria(val)
-        total = len(arquivos_resultado)
-        erros = sum(1 for a in arquivos_resultado if a["status"] != "ok")
+    try:
+        validacoes_resultado = []
+        for val in VALIDACOES:
+            arquivos_resultado = validar_categoria(val)
+            total = len(arquivos_resultado)
+            erros = sum(1 for a in arquivos_resultado if a["status"] != "ok")
 
-        validacoes_resultado.append({
-            "dado": val["dado"],
-            "valor": val["valor"],
-            "total_arquivos": total,
-            "status": "ok" if erros == 0 else f"{erros} erro(s)",
-            "arquivos": arquivos_resultado
-        })
+            validacoes_resultado.append({
+                "dado": val["dado"],
+                "valor": val["valor"],
+                "total_arquivos": total,
+                "status": "ok" if erros == 0 else f"{erros} erro(s)",
+                "arquivos": arquivos_resultado
+            })
 
-    total_validacoes = sum(v["total_arquivos"] for v in validacoes_resultado)
-    total_categorias_com_erro = sum(1 for v in validacoes_resultado if v["status"] != "ok")
+        total_validacoes = sum(v["total_arquivos"] for v in validacoes_resultado)
+        total_categorias_com_erro = sum(1 for v in validacoes_resultado if v["status"] != "ok")
 
-    return {
-        "arquivos_validados_total": total_validacoes,
-        "status_geral": "sucesso" if total_categorias_com_erro == 0 else "erro",
-        "validacoes": validacoes_resultado
-    }
+        return {
+            "arquivos_validados_total": total_validacoes,
+            "status_geral": "sucesso" if total_categorias_com_erro == 0 else "erro",
+            "validacoes": validacoes_resultado
+        }
+    except Exception as e:
+        # SEC-19: erro detalhado fica só no log do servidor; o cliente recebe
+        # uma mensagem genérica, sem caminhos/colunas/detalhes de SQLite.
+        print(f"Erro ao processar validacao de dados: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro interno ao processar a validação de dados",
+        )
