@@ -5,6 +5,36 @@
 
 ---
 
+## 🗓️ Quinta, 10/09 — Épico 4 entregue · board sincronizado
+
+### Entregue (5 de 6 épicos)
+- ✅ **Épico 4 — Error Handling** → PR #60 merged na develop (1 commit `555638e`: SEC-18..21)
+- Issues fechadas: #36, #37, #38, #39 + épico pai **#16**
+
+### O que foi feito (SEC-18..21)
+- `SEC-18` — `/transacoes` devolve 500 `"Erro interno ao acessar o banco de dados"` (era `f"Erro ao ler banco: {str(e)}"`)
+- `SEC-19` — `/validacao-dados` envolto em `try/except` → 500 genérico + `print()` server-side
+- `SEC-20` — `extrair_valor()` retorna `"erro_leitura"` puro (era `f"erro_leitura: {e}"`); detalhe só no `print()`
+- `SEC-21` — auditoria: únicos `str(e)` expostos eram os corrigidos; `print` de `/stats` permanece server-side
+
+### Bônus: synchronizei o board
+- Board estava todo na coluna errada: **É1 (#13, #19–23) e É5 (#17, #40–44)** ainda em TO DO apesar de mergeados → movidos 12 cards para **DONE**
+- Issue **#13 (Épico 1)** estava OPEN (Closes só fecha na main) → fechada manualmente via `gh issue close`
+- Cards do É4 (#16, #36–39) seguiram o ritual: IN PROGRESS → CODE REVIEW → MERGE→develop → DONE
+
+### Validação (gate + ponta a ponta no container)
+- **21 testes pytest verdes** (18 antigos + 3 novos em `tests/test_error_handling.py`) + flake8 limpo
+- CI 3/3 checks passando (Backend, Frontend, Docker Build)
+- No container real: `/transacoes` e `/validacao-dados` → 200 no fluxo normal; código deployado com mensagens genéricas (grep); corpo sem `erro_leitura:` com detalhe
+- Gotcha prático: nesta máquina não há pytest no python3 → usei venv em `/tmp/opencode` via `uv` (mesma versão do CI)
+
+### Restante da sprint (prazos vencidos)
+- **Épico 6 — Frontend Produção** (#45–49, prazo 31/08) — último, muda runtime do frontend
+- Backlog futuro (#51–55): fora desta sprint
+- Fim: release PR `develop → main` → épico vai para produção
+
+---
+
 ## 🗓️ Quarta, 09/09 — Épico 1 entregue
 
 ### Entregue (4 de 6 épicos)
