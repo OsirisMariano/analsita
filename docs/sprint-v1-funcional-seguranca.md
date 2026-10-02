@@ -2,6 +2,7 @@
 
 **Data:** 18/08/2026
 **Objetivo:** Corrigir brechas de segurança identificadas na auditoria da Sprint V1 Funcional
+**Gestão:** [GitHub Projects — Analista SemParar: Segurança & Evolução](https://github.com/users/OsirisMariano/projects/70) (Kanban com SEC-01..SEC-32, épicos e backlog futuro)
 
 ---
 

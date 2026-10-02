@@ -5,9 +5,10 @@
 | Campo | Detalhe |
 |---|---|
 | **Produto** | Analista SemParar |
-| **Versão do documento** | 1.0 |
-| **Status** | Em desenvolvimento (V1 em andamento) |
-| **Data** | 10/08/2026 |
+| **Versão do documento** | 1.2 |
+| **Status** | **V1 bloqueada por defeito de autenticação** (ver §11) — código entregue, painel inacessível |
+| **Data** | 02/10/2026 |
+| **Última revisão** | 02/10/2026 — [#68](https://github.com/OsirisMariano/analsita/issues/68) (reclassificação + FR-19) |
 | **Autor** | Equipe de Desenvolvimento |
 | **Stack** | Python/FastAPI, Vue 3, Tailwind CSS, SQLite, Docker |
 
@@ -84,8 +85,8 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 | Monitoramento de conectividade | Ping em tempo real das antenas, VPAR e saída de internet | ✅ Entregue |
 | Transações em tempo real | Tabela com as últimas transações lidas do SQLite (atualização periódica) | ✅ Entregue |
 | Validação de arquivos | Tabela de arquivos de configuração com status OK/ERRO e badge de alerta | ✅ Entregue |
-| Página de Câmeras | Grid de visualização de streams VPAR/CFTV | ✅ Entregue (dados mockados) |
-| Página de Leitoras | Status das antenas + ação de reinício | ✅ Entregue (dados mockados) |
+| Página de Câmeras | Grid de visualização de streams VPAR/CFTV | ⚠️ **Moldura, não produto** — UI pronta, dados mockados (`CamerasView.vue`). Valor real só na V2 (RTSP) |
+| Página de Leitoras | Status das antenas + ação de reinício | ⚠️ **Moldura, não produto** — UI pronta, reinício **simulado** via `alert`. Valor real só na V2 |
 | Simulador de dados | Script para gerar banco SQLite com transações de teste | ✅ Entregue |
 | Infraestrutura | Docker Compose com API + frontend e montagem do banco | ✅ Entregue |
 
@@ -118,7 +119,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - **FR-10** — O status da transação deve exibir cores distintas: `CONCLUIDO` (verde), `EM_ABERTO` (âmbar), `FALHA` (vermelho). *(Frontend: `TabelaTransacoes.vue`)*
 
 ### 6.4 Validação de arquivos
-- **FR-11** — O sistema deve listar os arquivos de configuração críticos do posto (ex.: `posto.json`, `concentrador.json`, `sensor.json`, `ifadapter.ini`, licença VPAR, certificado P12, `zabbix_agent2.conf`, `config.json`). *(Frontend: `store.js`)*
+- **FR-11** — O sistema deve listar os arquivos de configuração críticos do posto (ex.: `posto.json`, `concentrador.json`, `sensor.json`, `ifadapter.ini`, licença VPAR, certificado P12, `zabbix_agent2.conf`, `config.json`). *(Backend: `ARQUIVOS_CONFIG` em `backend/app/arquivos_config.py` — 15 entradas; exposto via `GET /arquivos`; consumido em `frontend/src/store.js`)*
 - **FR-12** — Cada arquivo deve exibir status `OK`/`ERRO` com indicador visual. *(Frontend: `ValidacaoArquivosView.vue`)*
 - **FR-13** — A sidebar deve exibir um **badge com a contagem de erros** no menu de Validação de Arquivos. *(Frontend: `Sidebar.vue` + `store.totalErros`)*
 
@@ -132,7 +133,11 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ### 6.7 API geral
 - **FR-18** — A API deve expor um endpoint de healthcheck (`GET /health`) indicando status e conectividade com o banco. *(Backend: `GET /health`)*
-- **FR-19** — A API deve permitir CORS de qualquer origem (modo dev). *(Backend: `CORSMiddleware`)*
+- **FR-19** — A API deve **restringir as origens CORS a uma allowlist** configurável por ambiente, e **exigir o header `X-API-Key`** em todas as rotas de dados. Rotas isentas de autenticação: `/health`, `/docs`, `/openapi.json`, `/redoc`. *(Backend: `CORSMiddleware` com `CORS_ORIGINS`; `ApiKeyMiddleware`)*
+
+> **Histórico desta alteração (02/10/2026, [#68](https://github.com/OsirisMariano/analsita/issues/68))**
+> A redação anterior dizia *"CORS de qualquer origem (modo dev)"*. Isso foi **obsoleto na prática**: a sprint de segurança (SEC-01 a SEC-05, PR #59) trocou `*` por allowlist via `CORS_ORIGINS` **e** passou a exigir `X-API-Key`. O requisito agora documenta o comportamento **real** do código (`backend/app/main.py:22-58`).
+> ⚠️ Consequência não resuelta: o frontend **não envia `X-API-Key`** (0 ocorrências em `frontend/src`) e o middleware **não isenta `OPTIONS`**, então o preflight CORS morre com 403 e o painel não carrega. Destrava em #63 + #64.
 
 ## 7. Requisitos Não-Funcionais
 
@@ -140,8 +145,8 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 |---|---|---|
 | **Performance** | Atualização em tempo real | Dashboard refresca a cada ≤ 5s sem degradação perceptível |
 | **Performance** | Leitura de banco | Consultas agregadas (`/stats`) devem retornar em < 500ms |
-| **Segurança** | Acesso ao banco | Banco SQLite deve ser lido como **read-only** pela API (sem escrita acidental) |
-| **Segurança** | CORS | Em produção, restringir origens permitidas (hoje `*` apenas para dev) |
+| **Segurança** | Acesso ao banco | ⚠️ **Não garantido pela infra.** A API só faz `SELECT`, mas `docker-compose.yml:18` monta `./data:/var/abastece/dados` **sem `:ro`**. O requisito real é "a API não escreve"; o isolamento de filesystem **não** está implementado. Corrigir com #67 |
+| **Segurança** | CORS | ✅ **Já restrito** via allowlist `CORS_ORIGINS` (SEC-01). Não existe mais `*` em nenhum ambiente |
 | **Disponibilidade** | Healthcheck | Endpoint `/health` deve refletir disponibilidade da API e do banco |
 | **Portabilidade** | Conteinerização | API e frontend devem rodar via Docker Compose em ambiente isolado |
 | **Compatibilidade** | Frontend | Suportar navegadores modernos (Chrome/Edge/Firefox); Node ≥ 20 |
@@ -150,14 +155,16 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 8. Roadmap
 
-### V1 — Base (em andamento)
+### V1 — Base (entregue em código, bloqueada em runtime)
 - [x] API FastAPI com stats, monitoramento e transações
 - [x] Dashboard Vue com polling de 5s
 - [x] Validação de arquivos + badge de erros
-- [x] Páginas de Câmeras e Leitoras (UI)
+- [x] Páginas de Câmeras e Leitoras (UI — moldura, dados mockados)
 - [x] Simulador de banco + Docker Compose
-- [ ] Integração dos dados reais de validação de arquivos via API
-- [ ] Configuração dinâmica dos dispositivos monitorados
+- [x] Integração dos dados reais de validação de arquivos via API — ✅ **JÁ IMPLEMENTADA** (`GET /arquivos` e `GET /validacao-dados` retornam dados reais do backend). Estava marcada como pendente por engano. *Não* é mais item de backlog: o que falta é o destravamento do 403 (#63/#64)
+- [ ] ~~Configuração dinâmica dos dispositivos monitorados~~ — 🔀 **DECISÃO DO PO (02/10): movida para a V2.** Na V1, a configuração se faz por variável de ambiente `EQUIPAMENTOS` (JSON), já implementada em `backend/app/main.py:72-84`. Uma API de configuração dinâmica continua **fora do escopo da V1** (§5.2) e passa a ser item de V2
+
+> **Por que a V1 está "entregue em código" mas não funciona:** o painel não carrega por um defeito de autenticação, não por falta de funcionalidade. Ver §11.
 
 ### V2 — Operacional (próximo)
 - **Diagnóstico de VPAR:** verificação automatizada de status de licença e funcionamento do software de reconhecimento de placas.
@@ -165,6 +172,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - **Câmeras reais:** exibição de streams reais (RTSP) com status de conectividade.
 - **Leitoras reais:** comando de reinício efetivo via API + histórico de última leitura.
 - **Autenticação e roles:** login com perfis (analista, supervisor, admin).
+- **Configuração dinâmica dos dispositivos:** API para listar/editar os equipamentos monitorados, hoje fixos em `_DEFAULT_EQUIPAMENTOS` (promovido da V1 em 02/10).
 - **WebSockets:** substituir o polling por atualização push em tempo real.
 
 ### V3 — Analítica & Proativa
@@ -212,13 +220,80 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 10. Critérios de Aceite (V1)
 
-- [ ] Dashboard exibe online/offline de todos os equipamentos cadastrados.
-- [ ] Vendas do dia e contagem de sucesso/falhas aparecem corretamente.
-- [ ] Últimas 5 transações aparecem com horário, placa, valor e status colorido.
-- [ ] Badge de erros na sidebar reflete os arquivos com status `ERRO`.
-- [ ] Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock).
-- [ ] Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`.
+> **Estado em 02/10/2026:** **nenhum critério pode ser marcado como cumprido ainda.** O código os implementa, mas o painel **não carrega no browser** (403 em toda requisição — §11), então não há como verificá-los de ponta a ponta. Todos ficam bloqueados por #63 + #64.
+> Regra de marcação: só marcar `[x]` com evidência observada no browser, nunca por leitura de código.
+
+- [ ] ⛔ Dashboard exibe online/offline de todos os equipamentos cadastrados. — *implementado (`/stats`); bloqueado por #63/#64*
+- [ ] ⛔ Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — *implementado (`/stats`); bloqueado por #63/#64*
+- [ ] ⛔ Últimas 5 transações aparecem com horário, placa, valor e status colorido. — *implementado (`LIMIT 5` + CSS de cores); bloqueado por #63/#64*
+- [ ] ⛔ Badge de erros na sidebar reflete os arquivos com status `ERRO`. — *implementado (`store.totalErros`); bloqueado por #63/#64*
+- [ ] ⛔ Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — *implementado; bloqueado por #63/#64*
+- [ ] ⛔ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; resposta real bloqueada por #63/#64*
+- [ ] ⛔ `OPTIONS` em rota pública não retorna 403. — *falha hoje; é o critério de aceite de #64*
+
+---
+
+## 11. Reclassificação do Projeto & Estado Real (decisão de 01–02/10/2026)
+
+> Registrado aqui para que a confusão entre docs e código não se repita. Fonte: [#62](https://github.com/OsirisMariano/analsita/issues/62), [#68](https://github.com/OsirisMariano/analsita/issues/68).
+
+### 11.1 Natureza do projeto
+O Analista SemParar é **projeto de estudos**, não produto em produção. Não há cliente, SLA, ambiente produtivo nem operação contínua. Isso **remove a segurança do caminho crítico**: endurecimento não pode consumir a entrega da funcionalidade.
+
+### 11.2 Decisões do PO (01/10/2026)
+
+| Tema | Decisão | Consequência |
+|---|---|---|
+| Autenticação | **Fora da V1.** `API_KEY` fica no código, mas vira **opt-in** | Issue #63 |
+| CORS | **Mantém restrito** a `localhost:5173` | Custa zero, evita ruído de erro |
+| Épico 6 (build de produção) | **Cancelado** | `serve` não agrega valor de estudo sem auth real |
+| #52 (TLS), #53 (login), #54 (rate limit), #55 (logging estruturado) | **Backlog sem prazo** | Reescritos quando as funções estiverem definidas |
+| FR-03 (polling 5s) | **Corrige** | Issue #65 |
+
+### 11.3 Custo da sprint de segurança
+A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 funcional nunca foi demonstrada funcionando**. É o registro de que hardening sem verificação end-to-end produz entregas que não rodam.
+
+### 11.4 Bloqueio atual da V1 (uma linha)
+Toda chamada do frontend à API retorna **403**. Duas causas somadas:
+
+1. O frontend **não envia `X-API-Key`** — 0 ocorrências em `frontend/src`. Correção: **#63** (API key opt-in).
+2. O `ApiKeyMiddleware` (`backend/app/main.py:41-48`) **não isenta `OPTIONS`**. Ele é a camada mais externa (adicionado depois do `CORSMiddleware`), então intercepta e rejeita o preflight antes de o CORS responder. Sem isso, mesmo com a chave, o browser morreria no preflight. Correção: **#64**.
+
+> **Por que a CI não pegou isso:** os testes usam `TestClient`, que executa requisições diretas e **não simula preflight CORS**. Cobertura de preflight é o teste que falta (item do DoD de #64).
+
+### 11.5 Regra permanente
+> **Toda task que altera comportamento observável atualiza este PRD no mesmo PR.**
+
+Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido — a divergência do FR-19 custou a §11 inteira. A auditoria FR-01..FR-19 de 02/10 fica registrada abaixo.
+
+### 11.6 Auditoria FR-01..FR-19 contra o código (02/10/2026)
+
+| FR | Veredito | Evidência |
+|---|---|---|
+| FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Bloqueado em runtime por §11.4 |
+| FR-02 | ✅ Conforme | `GET /stats` → `transacoes` |
+| FR-03 | ⚠️ **Parcial** | `setInterval(carregarDados, 5000)` existe (`HomeView.vue:34`), mas `carregarDados` é `async` **sem guarda de sobreposição** — requisições lentas acumulam. Issue #65 |
+| FR-04 | ✅ Conforme | `disparar_ping()`: `ping -c 1 -W 1` + gate `ip_address()` (SEC-06) |
+| FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:65-70`) |
+| FR-06 | ✅ Conforme | `DispositivoCard.vue` |
+| FR-07 | ✅ Conforme | `GET /monitoramento` → nome, ip, status |
+| FR-08 | ✅ Conforme | `ORDER BY timestamp DESC` (`main.py:144`) |
+| FR-09 | ✅ Conforme | `LIMIT 5` em `lista_detalhada` (`main.py:195`) |
+| FR-10 | ✅ Conforme | CSS `.concluido` / `.em-aberto` / `.falha` (`TabelaTransacoes.vue:94-107`) |
+| FR-11 | 🔧 **Corrigido nesta revisão** | Mapeamento estava errado: a lista vive em `backend/app/arquivos_config.py` (15 entradas), não em `store.js`, que apenas consome `GET /arquivos` |
+| FR-12 | ✅ Conforme | `ValidacaoArquivosView.vue:34-38` |
+| FR-13 | ✅ Conforme | `AppSidebar.vue:100-108` + `store.js:32` (`totalErros`) |
+| FR-14 | ⚠️ Conforme, mas **mockado** | `CamerasView.vue:3-5` — 3 câmeras com placeholder |
+| FR-15 | ✅ Conforme | `aspect-video` = 16:9 (`CamerasView.vue:27`) |
+| FR-16 | ⚠️ Conforme, mas **mockado** | `LeiturasView.vue` |
+| FR-17 | ✅ Conforme (simulado) | `alert()` — coerente com §5.2 |
+| FR-18 | ✅ Conforme | `GET /health` |
+| FR-19 | 🔧 **Corrigido nesta revisão** | Allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório. Ver §6.7 |
+
+**Resumo da auditoria:** 14 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), 1 parcial com issue aberta (FR-03).
+**Nenhum requisito da §6 está ausente no código.** O bloqueio é de integração (§11.4), não de implementação.
 
 ---
 
 *Documento vivo — atualizar a cada iteração conforme novas features entram no backlog.*
+*Regra: toda alteração de comportamento observável atualiza este documento no mesmo PR (§11.5).*

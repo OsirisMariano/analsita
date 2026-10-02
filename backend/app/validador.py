@@ -1,16 +1,36 @@
 import json
 import os
 
+# Whitelist dos únicos prefixos de caminho que a aplicação pode ler.
+# Emenda do PO: inclui /etc/zabbix/ e /etc/logrotate.d/, consumidos
+# pelo endpoint /validacao-dados. O consumo desta lista (recusa de
+# qualquer path fora dela) acontece em extrair_valor().
+ALLOWED_PREFIXES = (
+    "/etc/abastece/",
+    "/var/abastece/",
+    "/var/DS_SFTP/",
+    "/etc/zabbix/",
+    "/etc/logrotate.d/",
+)
+
 
 def extrair_valor(caminho, regra):
     """Lê arquivo e extrai valor conforme o tipo da regra."""
+    # Portão da whitelist: normaliza o caminho (desfaz ../ e //) e só
+    # prossegue se ele nasce de um dos prefixos permitidos. Caminhos
+    # relativos e disfarces tipo /etc/abastece/../../etc/shadow caem aqui.
+    caminho_norm = os.path.normpath(caminho)
+    if not caminho_norm.startswith(ALLOWED_PREFIXES):
+        return None, "acesso_nao_permitido"
+
     if not os.path.exists(caminho):
         return None, "arquivo_nao_encontrado"
 
     try:
         conteudo = open(caminho, encoding="utf-8", errors="replace").read()
     except Exception as e:
-        return None, f"erro_leitura: {e}"
+        print(f"erro_leitura: {e}")
+        return None, "erro_leitura"
 
     tipo = regra["tipo"]
 

@@ -3,8 +3,12 @@ import os
 from datetime import datetime, timedelta
 import random
 
-# Caminho onde o banco será criado (dentro da pasta data do projeto)
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'abastece.db')
+# Caminho do banco: prioriza a env var DB_PATH (usada pelo container);
+# sem ela, mantém o comportamento original (pasta data/ do projeto)
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    os.path.join(os.path.dirname(__file__), '..', 'data', 'abastece.db')
+)
 
 def inicializar_banco():
     # Garante que a pasta data existe

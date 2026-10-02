@@ -1,0 +1,13 @@
+# Git
+.git
+.gitignore
+
+# Dependências — qualquer profundidade (backend/frontend)
+**/node_modules
+
+# Banco de dados local — nunca entrar em imagem
+data/*.db*
+
+# Ambiente e segredos — qualquer profundidade
+**/.env
+**/.env.*

@@ -38,8 +38,8 @@ jobs:
 
       - name: Executar Testes Automatizados (Pytest)
         run: |
-          # Executa se houver a pasta de testes configurada no backend
-          pytest backend/ -v || echo "Nenhum teste encontrado ainda, seguindo pipeline..."
+          # Gate do merge (SEC-09): teste quebrado derruba a pipeline
+          pytest backend/tests -v
 
   # --------------------------------------------------------
   # JOB 2: Build e Linter do Frontend (Vue 3 / Vite)

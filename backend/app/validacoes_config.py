@@ -1,23 +1,31 @@
+import os
+
+# Valores sensíveis externalizados via variáveis de ambiente (SEC-24).
+# Sem a variável setada, cai no fallback (comportamento atual preservado).
+CONVENIADO_CODE = os.environ.get("CONVENIADO_CODE", "02896")
+SFTP_SERVER = os.environ.get("SFTP_SERVER", "DS_ABAST.02896_1")
+NUC_IP = os.environ.get("NUC_IP", "192.168.212.21")
+
 VALIDACOES = [
     {
         "dado": "codigoConveniado",
-        "valor": "02896",
+        "valor": CONVENIADO_CODE,
         "checks": [
             {"arquivo": "/etc/abastece/lado1/posto.json", "tipo": "json_valor", "chave": "postoId"},
             {"arquivo": "/etc/abastece/lado2/posto.json", "tipo": "json_valor", "chave": "postoId"},
-            {"arquivo": "/var/abastece/SLT/configpista/ifadapter.ini", "tipo": "texto", "padrao": "02896"},
+            {"arquivo": "/var/abastece/SLT/configpista/ifadapter.ini", "tipo": "texto", "padrao": CONVENIADO_CODE},
         ]
     },
     {
         "dado": "config",
-        "valor": "DS_ABAST.02896_1",
+        "valor": SFTP_SERVER,
         "checks": [
             {"arquivo": "/var/DS_SFTP/config.json", "tipo": "json_valor", "chave": "server"},
         ]
     },
     {
         "dado": "IPs nuc",
-        "valor": "192.168.212.21",
+        "valor": NUC_IP,
         "checks": [
             {"arquivo": "/etc/abastece/autorizador/retrofit-autorizador.json", "tipo": "json_busca"},
             {"arquivo": "/etc/abastece/lado1/antena.json", "tipo": "json_busca"},

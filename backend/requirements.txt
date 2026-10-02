@@ -1,5 +1,6 @@
 fastapi==0.109.0
 uvicorn==0.27.0
 python-multipart==0.0.6
+httpx==0.24.1
 # Para lidar com o SQLite e chamadas de sistema, o Python já tem libs nativas,
 # mas se precisarmos de algo extra para logs no futuro, adicionamos aqui.

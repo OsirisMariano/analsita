@@ -6,5 +6,5 @@ if [ ! -f "$DB_PATH" ]; then
   python /scripts/simulador_posto.py
 fi
 
-# Inicia a API
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Inicia a API (sem --reload: paridade com produção)
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000
