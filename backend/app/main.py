@@ -33,25 +33,53 @@ app.add_middleware(
     allow_headers=["X-API-Key"],
 )
 
-# SEC-04 / SEC-03: API_KEY via variável de ambiente
-# Em desenvolvimento, usa um valor fixo para não bloquear o workflow.
-_API_KEY = os.environ.get("API_KEY", "dev-key-not-secure")
+# SEC-04 / SEC-03: API_KEY via variável de ambiente — **opt-in** (#63).
+#
+# Sem esta variável, o middleware fica INATIVO e nenhuma credencial é exigida.
+# É o comportamento desejado no ambiente de estudo: o painel sobe sem setup.
+#
+# Com a variável presente, a exigência é integral e idêntica à anterior:
+# todas as rotas de dados passam a exigir o header X-API-Key.
+#
+# Não há fallback com valor fixo. Um fallback faz a variável "sempre existir"
+# e trava o ambiente de estudo atrás de uma credencial que ninguém configurou —
+# exatamente o defeito corrigido em #63.
+_API_KEY = os.environ.get("API_KEY", "").strip()
 
-# SEC-03: Middleware — exige header X-API-Key em todas as rotas exceto /health
+# SEC-03: Middleware — exige header X-API-Key em todas as rotas de dados,
+# exceto as isentas abaixo. Só vale quando _API_KEY está definida.
 Rotas_Isentas = {"/health", "/docs", "/openapi.json", "/redoc"}
 
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
+        # Opt-in (#63): sem chave configurada o middleware não exige nada.
+        # Isso também libera o preflight OPTIONS, que era justamente o segundo
+        # ponto de bloqueio do painel — ver #64 para o cenário com chave ativa.
+        if not _API_KEY:
+            return await call_next(request)
+
         if request.url.path in Rotas_Isentas:
             return await call_next(request)
+
         chave = request.headers.get("X-API-Key")
-        if not chave or not hmac.compare_digest(chave, _API_KEY):
+        if not chave:
             return JSONResponse(
-                content={"detail": "API key inválida ou ausente"},
+                content={"detail": "API key ausente"},
                 status_code=403,
             )
+
+        # SEC-03 preservado: comparação em tempo constante.
+        # Comparar bytes (e não str) porque o compare_digest levanta TypeError
+        # com str não-ASCII — e header HTTP é latin-1, então um cliente pode
+        # enviar byte alto e transformar o 403 esperado em 500.
+        if not hmac.compare_digest(chave.encode("utf-8"), _API_KEY.encode("utf-8")):
+            return JSONResponse(
+                content={"detail": "API key inválida"},
+                status_code=403,
+            )
+
         return await call_next(request)
 
 
