@@ -174,3 +174,47 @@ Card IN PROGRESS + assignee OsirisMariano → implementar → validar local → 
 - Épico 6 — Prod build Frontend (#45–49, prazo 31/08) — último, muda runtime do frontend
 - Backlog futuro (#51–55): fora desta sprint
 - Fim: release PR `develop → main` → épico vai para produção
+
+---
+
+## 2026-10-01 → 2026-10-02 — Reclassificação e correção do PRD (#62, #68)
+
+### Decisões do PO (01/10)
+O projeto foi reclassificado como **projeto de estudos**. Consequência direta: **segurança sai do caminho crítico**.
+Autenticação fora da V1 (#63 torna a API key opt-in) · CORS segue restrito · Épico 6 (build prod) cancelado ·
+#52/#53/#54/#55 vão para backlog sem prazo · FR-03 corrigido (#65).
+
+### Por que essa entrada existe
+A sprint de segurança consumiu **42 SP**, entregou 5 de 6 épicos — e a V1 funcional **nunca foi demonstrada funcionando**.
+O painel está vazio desde 09/09 porque toda chamada do frontend à API retorna **403**.
+
+**Causa raiz = duas linhas:**
+1. O frontend não envia `X-API-Key` (0 ocorrências em `frontend/src`) → #63
+2. `ApiKeyMiddleware` (`main.py:41`) não isenta `OPTIONS` e é a camada mais externa, então mata o preflight → #64
+
+**Por que a CI ficou verde:** `TestClient` não simula preflight CORS. O teste que falta é o de preflight (DoD do #64).
+
+### Correção do PRD (02/10, #68)
+PRD elevado a **v1.2**. Divergências corrigidas contra o código:
+- **FR-19** reescrito: allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório. A redação antiga ("CORS de qualquer origem") estava obsoleta desde o PR #59.
+- **FR-11** corrigido: a lista de arquivos vive em `backend/app/arquivos_config.py` (15 entradas), não em `store.js`.
+- **RNF SQLite read-only** corrigido: `docker-compose.yml:18` monta `./data` **sem `:ro`** — o requisito não é garantido pela infra (#67).
+- **Roadmap V1 decidido**: "integração dos dados de validação via API" já estava implementada (marcada como pendente por engano); "configuração dinâmica" migrou para a V2.
+- **Nova §11** registra a reclassificação, o bloqueio atual e a auditoria FR-01..FR-19.
+
+**Resultado da auditoria:** nenhum requisito da §6 falta no código. 14 conformes, 2 mockados por escopo, 1 parcial (#65).
+O bloqueio é de **integração**, não de implementação.
+
+### Regra permanente (nasceu deste episode)
+> Toda task que altera comportamento observável atualiza o PRD no mesmo PR.
+
+Já estava escrito desde a v1.0 ("documento vivo") e não foi cumprido. A divergência do FR-19 custou a §11 inteira.
+
+### Lição
+Segurança aplicada sem verificação end-to-end gera entrega que não sobe. O epic de segurança passou 5/6 e mesmo assim
+entregou um painel que não abre no browser. **Antes de promotes código para `main`, rodar o fluxo real no browser** —
+a CI verde não cobre preflight CORS nem integração frontend↔backend.
+
+### Próximos passos
+`develop` → `main` promovido em 02/10 (26 commits, incluindo SEC-01..32).
+Basta #63 + #64 (4 SP) para a V1 ficar demonstrável.
