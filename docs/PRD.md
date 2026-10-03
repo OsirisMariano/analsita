@@ -5,10 +5,10 @@
 | Campo | Detalhe |
 |---|---|
 | **Produto** | Analista SemParar |
-| **Versão do documento** | 1.2 |
-| **Status** | **V1 bloqueada por defeito de autenticação** (ver §11) — código entregue, painel inacessível |
-| **Data** | 02/10/2026 |
-| **Última revisão** | 02/10/2026 — [#68](https://github.com/OsirisMariano/analsita/issues/68) (reclassificação + FR-19) |
+| **Versão do documento** | 1.3 |
+| **Status** | **V1 destravada no código** — #63 (API key opt-in) e #64 (preflight CORS) entregues; falta a confirmação no browser (#67) |
+| **Data** | 03/10/2026 |
+| **Última revisão** | 03/10/2026 — [#64](https://github.com/OsirisMariano/analsita/issues/64) (preflight CORS) |
 | **Autor** | Equipe de Desenvolvimento |
 | **Stack** | Python/FastAPI, Vue 3, Tailwind CSS, SQLite, Docker |
 
@@ -133,11 +133,19 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ### 6.7 API geral
 - **FR-18** — A API deve expor um endpoint de healthcheck (`GET /health`) indicando status e conectividade com o banco. *(Backend: `GET /health`)*
-- **FR-19** — A API deve **restringir as origens CORS a uma allowlist** configurável por ambiente, e **exigir o header `X-API-Key`** em todas as rotas de dados. Rotas isentas de autenticação: `/health`, `/docs`, `/openapi.json`, `/redoc`. *(Backend: `CORSMiddleware` com `CORS_ORIGINS`; `ApiKeyMiddleware`)*
+- **FR-19** — A API deve **restringir as origens CORS a uma allowlist** configurável por ambiente, e **exigir o header `X-API-Key`** em todas as rotas de dados **quando `API_KEY` estiver definida no ambiente**. Rotas isentas de autenticação: `/health`, `/docs`, `/openapi.json`, `/redoc`. O preflight (`OPTIONS`) é **isento por método** em qualquer rota, para que o `CORSMiddleware` possa respondê-lo. *(Backend: `CORSMiddleware` com `CORS_ORIGINS`; `ApiKeyMiddleware` com `Rotas_Isentas` e `Metodos_Isentos`)*
 
 > **Histórico desta alteração (02/10/2026, [#68](https://github.com/OsirisMariano/analsita/issues/68))**
-> A redação anterior dizia *"CORS de qualquer origem (modo dev)"*. Isso foi **obsoleto na prática**: a sprint de segurança (SEC-01 a SEC-05, PR #59) trocou `*` por allowlist via `CORS_ORIGINS` **e** passou a exigir `X-API-Key`. O requisito agora documenta o comportamento **real** do código (`backend/app/main.py:22-58`).
-> ⚠️ Consequência não resuelta: o frontend **não envia `X-API-Key`** (0 ocorrências em `frontend/src`) e o middleware **não isenta `OPTIONS`**, então o preflight CORS morre com 403 e o painel não carrega. Destrava em #63 + #64.
+> A redação anterior dizia *"CORS de qualquer origem (modo dev)"*. Isso foi **obsoleto na prática**: a sprint de segurança (SEC-01 a SEC-05, PR #59) trocou `*` por allowlist via `CORS_ORIGINS` **e** passou a exigir `X-API-Key`. O requisito agora documenta o comportamento **real** do código (`backend/app/main.py:22-88`).
+>
+> **Consequência resolvida em 03/10/2026 ([#63](https://github.com/OsirisMariano/analsita/issues/63) + [#64](https://github.com/OsirisMariano/analsita/issues/64)).**
+> Restavam duas causas combinadas: o frontend **não envia `X-API-Key`** (0 ocorrências em `frontend/src`) e o middleware **não isentava `OPTIONS`**, então o preflight morria com 403 e o painel não carregava.
+> - **#63** — `API_KEY` passou a ser **opt-in**: ausente, o middleware não exige credencial. O frontend sem header deixou de ser um problema.
+> - **#64** — `OPTIONS` passou a ser **isento por método** (`Metodos_Isentos`), então o preflight é respondido pelo `CORSMiddleware`. O `GET` continua exigindo a chave normalmente quando `API_KEY` está definida.
+>
+> ⚠️ **O frontend segue sem enviar `X-API-Key`** — e isso está correto na V1: a autenticação é opt-in e o ambiente de estudo não exige credencial.
+>
+> > **Por que #64 era necessária mesmo sem o header no frontend hoje:** header customizado **obriga** preflight. Sem a isenção, o momento em que alguém adicionasse `X-API-Key` ao `fetch` — o passo natural ao plugar a #53 no futuro — o painel quebraria de novo, desta vez com um erro genérico no console em vez de um 403 legível. A armadilha foi desarmada antes de alguém cair nela.
 
 ## 7. Requisitos Não-Funcionais
 
@@ -155,13 +163,13 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 8. Roadmap
 
-### V1 — Base (entregue em código, bloqueada em runtime)
+### V1 — Base (entregue em código; confirmação no browser pendente)
 - [x] API FastAPI com stats, monitoramento e transações
 - [x] Dashboard Vue com polling de 5s
 - [x] Validação de arquivos + badge de erros
 - [x] Páginas de Câmeras e Leitoras (UI — moldura, dados mockados)
 - [x] Simulador de banco + Docker Compose
-- [x] Integração dos dados reais de validação de arquivos via API — ✅ **JÁ IMPLEMENTADA** (`GET /arquivos` e `GET /validacao-dados` retornam dados reais do backend). Estava marcada como pendente por engano. *Não* é mais item de backlog: o que falta é o destravamento do 403 (#63/#64)
+- [x] Integração dos dados reais de validação de arquivos via API — ✅ **JÁ IMPLEMENTADA** (`GET /arquivos` e `GET /validacao-dados` retornam dados reais do backend). Estava marcada como pendente por engano. *Não* é mais item de backlog: o destravamento do 403 foi feito em #63 + #64
 - [ ] ~~Configuração dinâmica dos dispositivos monitorados~~ — 🔀 **DECISÃO DO PO (02/10): movida para a V2.** Na V1, a configuração se faz por variável de ambiente `EQUIPAMENTOS` (JSON), já implementada em `backend/app/main.py:72-84`. Uma API de configuração dinâmica continua **fora do escopo da V1** (§5.2) e passa a ser item de V2
 
 > **Por que a V1 está "entregue em código" mas não funciona:** o painel não carrega por um defeito de autenticação, não por falta de funcionalidade. Ver §11.
@@ -220,16 +228,17 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 10. Critérios de Aceite (V1)
 
-> **Estado em 02/10/2026:** **nenhum critério pode ser marcado como cumprido ainda.** O código os implementa, mas o painel **não carrega no browser** (403 em toda requisição — §11), então não há como verificá-los de ponta a ponta. Todos ficam bloqueados por #63 + #64.
-> Regra de marcação: só marcar `[x]` com evidência observada no browser, nunca por leitura de código.
+> **Estado em 03/10/2026:** o bloqueio de runtime foi removido — #63 (API key opt-in) e #64 (preflight CORS) estão entregues. O que falta é a **verificação no browser**, que é o rito da #67.
+> Regra de marcação (inalterada): só marcar `[x]` com evidência observada no browser, nunca por leitura de código. Por isso os itens abaixo continuam **[ ]** — implements e testado, porém não observado no browser ainda.
+> Exceção: o critério de `OPTIONS` foi marcado por ter evidência de runtime direta (pytest + `curl` contra servidor real), detalhada na linha correspondente.
 
-- [ ] ⛔ Dashboard exibe online/offline de todos os equipamentos cadastrados. — *implementado (`/stats`); bloqueado por #63/#64*
-- [ ] ⛔ Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — *implementado (`/stats`); bloqueado por #63/#64*
-- [ ] ⛔ Últimas 5 transações aparecem com horário, placa, valor e status colorido. — *implementado (`LIMIT 5` + CSS de cores); bloqueado por #63/#64*
-- [ ] ⛔ Badge de erros na sidebar reflete os arquivos com status `ERRO`. — *implementado (`store.totalErros`); bloqueado por #63/#64*
-- [ ] ⛔ Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — *implementado; bloqueado por #63/#64*
-- [ ] ⛔ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; resposta real bloqueada por #63/#64*
-- [ ] ⛔ `OPTIONS` em rota pública não retorna 403. — *falha hoje; é o critério de aceite de #64*
+- [ ] ⏳ Dashboard exibe online/offline de todos os equipamentos cadastrados. — *implementado (`/stats`); aguardando confirmação no browser (#67)*
+- [ ] ⏳ Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — *implementado (`/stats`); aguardando confirmação no browser (#67)*
+- [ ] ⏳ Últimas 5 transações aparecem com horário, placa, valor e status colorido. — *implementado (`LIMIT 5` + CSS de cores); aguardando confirmação no browser (#67)*
+- [ ] ⏳ Badge de erros na sidebar reflete os arquivos com status `ERRO`. — *implementado (`store.totalErros`); aguardando confirmação no browser (#67)*
+- [ ] ⏳ Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — *implementado; aguardando confirmação no browser (#67)*
+- [ ] ⏳ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; validação integrada é a #67*
+- [x] `OPTIONS` em rota pública não retorna 403. — ✅ **Corrigido em #64.** Evidência de runtime, **não** de browser: pytest parametrizado nas 7 rotas públicas (falha em 16 casos ao remover a isenção) + `curl` contra `uvicorn` real devolvendo `200` com `access-control-allow-origin`; origem não permitida segue sem o cabeçalho (SEC-01) e `GET` sem chave segue em `403`. Confirmação no browser fica para a #67.
 
 ---
 
@@ -252,14 +261,22 @@ O Analista SemParar é **projeto de estudos**, não produto em produção. Não 
 
 ### 11.3 Custo da sprint de segurança
 A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 funcional nunca foi demonstrada funcionando**. É o registro de que hardening sem verificação end-to-end produz entregas que não rodam.
+### 11.4 Bloqueio da V1 e como foi removido
 
-### 11.4 Bloqueio atual da V1 (uma linha)
-Toda chamada do frontend à API retorna **403**. Duas causas somadas:
+**Estado em 02/10/2026:** toda chamada do frontend à API retornava **403**, por duas causas somadas:
 
 1. O frontend **não envia `X-API-Key`** — 0 ocorrências em `frontend/src`. Correção: **#63** (API key opt-in).
-2. O `ApiKeyMiddleware` (`backend/app/main.py:41-48`) **não isenta `OPTIONS`**. Ele é a camada mais externa (adicionado depois do `CORSMiddleware`), então intercepta e rejeita o preflight antes de o CORS responder. Sem isso, mesmo com a chave, o browser morreria no preflight. Correção: **#64**.
+2. O `ApiKeyMiddleware` **não isentava `OPTIONS`**. Ele é a camada mais externa (adicionado depois do `CORSMiddleware`, porque `add_middleware` insere no início da pilha), então interceptava e rejeitava o preflight antes de o CORS responder. Correção: **#64** (`Metodos_Isentos = {"OPTIONS"}`).
 
-> **Por que a CI não pegou isso:** os testes usam `TestClient`, que executa requisições diretas e **não simula preflight CORS**. Cobertura de preflight é o teste que falta (item do DoD de #64).
+**Estado em 03/10/2026:** ambas entregues. `GET /stats`, `/monitoramento`, `/transacoes`, `/arquivos` e `/validacao-dados` respondem **200** no fluxo normal e o preflight responde **200** nas 7 rotas. Falta apenas a confirmação no browser, que é o rito da **#67**.
+
+> ⚠️ **Sobre a numeração de linhas:** o `ApiKeyMiddleware` ocupa `backend/app/main.py:54-88` na revisão de 03/10. A referência `41-48` aqui estava defasada desde a #63.
+
+> **Por que a CI não pegou o preflight — com uma correção ao diagnóstico original.** A versão anterior deste documento afirmava que o `TestClient` *"não simula preflight CORS"*. **Isso estava errado**, verificado em 03/10: o `TestClient` **executa** o caminho de `OPTIONS` de verdade quando o teste o solicita explicitamente — a requisição percorre a pilha de middlewares e o `CORSMiddleware` responde com os cabeçalhos corretos.
+>
+> A lacuna real era mais estreita: existia um teste de preflight, mas **só para o caso `API_KEY` ausente** — exatamente o caso que **não** quebrava, porque sem chave o middleware fica inativo. O cenário com `API_KEY` ativa, que é o que devolvia 403, **não tinha cobertura nenhuma**. O `TestClient` não era o problema; a ausência de parametrização sobre as rotas e sobre os dois estados da chave era.
+>
+> Isso é a mesma lição da §11.3 com um sabor diferente: a cobertura existia, mas cobria o caminho que **já** funcionava.
 
 ### 11.5 Regra permanente
 > **Toda task que altera comportamento observável atualiza este PRD no mesmo PR.**
@@ -270,15 +287,15 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 
 | FR | Veredito | Evidência |
 |---|---|---|
-| FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Bloqueado em runtime por §11.4 |
+| FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Destravado em runtime por §11.4 |
 | FR-02 | ✅ Conforme | `GET /stats` → `transacoes` |
 | FR-03 | ⚠️ **Parcial** | `setInterval(carregarDados, 5000)` existe (`HomeView.vue:34`), mas `carregarDados` é `async` **sem guarda de sobreposição** — requisições lentas acumulam. Issue #65 |
 | FR-04 | ✅ Conforme | `disparar_ping()`: `ping -c 1 -W 1` + gate `ip_address()` (SEC-06) |
-| FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:65-70`) |
+| FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:118-124`) |
 | FR-06 | ✅ Conforme | `DispositivoCard.vue` |
 | FR-07 | ✅ Conforme | `GET /monitoramento` → nome, ip, status |
-| FR-08 | ✅ Conforme | `ORDER BY timestamp DESC` (`main.py:144`) |
-| FR-09 | ✅ Conforme | `LIMIT 5` em `lista_detalhada` (`main.py:195`) |
+| FR-08 | ✅ Conforme | `ORDER BY timestamp DESC` (`main.py:248`) |
+| FR-09 | ✅ Conforme | `LIMIT 5` em `lista_detalhada` (`main.py:248`) |
 | FR-10 | ✅ Conforme | CSS `.concluido` / `.em-aberto` / `.falha` (`TabelaTransacoes.vue:94-107`) |
 | FR-11 | 🔧 **Corrigido nesta revisão** | Mapeamento estava errado: a lista vive em `backend/app/arquivos_config.py` (15 entradas), não em `store.js`, que apenas consome `GET /arquivos` |
 | FR-12 | ✅ Conforme | `ValidacaoArquivosView.vue:34-38` |
@@ -288,10 +305,10 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 | FR-16 | ⚠️ Conforme, mas **mockado** | `LeiturasView.vue` |
 | FR-17 | ✅ Conforme (simulado) | `alert()` — coerente com §5.2 |
 | FR-18 | ✅ Conforme | `GET /health` |
-| FR-19 | 🔧 **Corrigido nesta revisão** | Allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório. Ver §6.7 |
+| FR-19 | 🔧 **Corrigido em 02/10, refined em 03/10** | Allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório **quando `API_KEY` está definida** (opt-in, #63) + `OPTIONS` isento por método (#64). Ver §6.7 |
 
 **Resumo da auditoria:** 14 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), 1 parcial com issue aberta (FR-03).
-**Nenhum requisito da §6 está ausente no código.** O bloqueio é de integração (§11.4), não de implementação.
+**Nenhum requisito da §6 está ausente no código.** O bloqueio era de integração (§11.4) e foi removido em 03/10; falta a confirmação no browser (#67).
 
 ---
 
