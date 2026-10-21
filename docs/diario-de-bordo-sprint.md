@@ -25,7 +25,7 @@ Sete milestones abertos, **zero** issues abertas em qualquer milestone do reposi
 
 ### Por que ninguém fechou
 
-O GitHub **nunca fecha milestone sozinho** — é um passo manual, como `gh issue close`. E o projeto tem disciplina nesse ponto: fechou **54 de 54** issues com motivo explícito (47 `completed` + 7 `not_planned`), todas as 45 issues com responsável. O milestone era o único container sem dono do passo, porque **nenhum documento dizia que ele também fecha**. Não havia `AGENTS.md`, nem `CONTRIBUTING.md`, nem seção no doc de sprint sobre isso.
+O GitHub **nunca fecha milestone sozinho** — é um passo manual, como `gh issue close`. E o projeto tem disciplina nesse ponto: fechou **54 de 54** issues com motivo explícito (47 `completed` + 7 `not_planned`). O milestone era o único container sem dono do passo, porque **nenhum documento dizia que ele também fecha**. Não havia `AGENTS.md`, nem `CONTRIBUTING.md`, nem seção no doc de sprint sobre isso.
 
 Faltava a regra, não o esforço.
 
@@ -43,6 +43,8 @@ Fechar milestone **não** mexe nas issues: os `stateReason` foram preservados �
 
 **Sem prazo, de propósito.** Os 7 milestones antigos tinham data, mas o É8 não foi estimado em story points — diferente da sprint anterior, que tinha 42 SP e 6 dias definidos no doc. Inventar uma data seria repetir o que a §11 do PRD critica: entregar sem verificação. O prazo entra junto com o planejamento.
 
+> **Um segundo desvio encontrado na mesma varredura:** das 54 issues fechadas, só **29** têm responsável — as outras 25 foram fechadas sem `assignee`. Não corrigi retroativamente: responsável em issue já encerrada é ruído, e mexer em 25 issues fechadas para "completar um padrão" não entrega nada. Fica registrado aqui como a outra metade da mesma lacuna: o projeto fecha issue com motivo explícito, mas o **campo de responsável nunca foi uma regra** — exatamente como o milestone. A diferença: o responsável é útil nas issues abertas, e as 5 do É8 já foram criada com ele.
+
 **3. A regra escrita** em `docs/sprint-v1-funcional-seguranca.md`, na seção **"GitHub: milestone fecha quando o épico fecha"**, ao lado das outras regras de processo (branch strategy, via de release fora do ciclo, versionamento por tag). E ancorada na **Definition of Pronto**: o checklist "Para a sprint completa" ganhou a linha *"Milestone da sprint fechado"*.
 
 ### Estado final
@@ -51,7 +53,7 @@ Fechar milestone **não** mexe nas issues: os `stateReason` foram preservados �
 |---|---|
 | Milestones | 7 `closed` (É1..É7) + 1 `open` (É8, 5 issues abertas) |
 | Issues abertas | 5 — todas no É8, **nenhuma solta** |
-| Issues fechadas | 54, todas com `stateReason` explícito e responsável |
+| Issues fechadas | 54 — **todas** com `stateReason` explícito; 29 com responsável |
 | Release | **nenhum** — é metadado de processo, não de produto. Vai para `develop` e chega ao `main` no próximo release, como a nota de publicação do #81 |
 
 > **A lição tem a mesma forma das outras duas desta semana.** A política de branches não existia até precisar de um hotfix fora do ciclo. O versionamento por tag não existia até precisar identificar um release. A regra de milestone não existia até precisar de um milestone fechado. **Toda regra de processo deste repositório nasceu de uma exceção** — e o custo de não ter a regra não aparece no código, aparece no painel.
