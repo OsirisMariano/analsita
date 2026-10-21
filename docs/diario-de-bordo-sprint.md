@@ -5,7 +5,94 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite, parte 6) — Reescopo do É8 por capacidade: 40 SP, 4 ciclos, 2 milestones novos
+
+> A parte 5 planejou o É8 com 59 SP em 3 ondas. Esta entrada registra a resposta de capacidade que veio depois — **2 h/dia** — e o reescopo que ela obriga. O plano da parte 5 vira histórico; o plano vivo está em [`docs/sprint-e8-seguranca-evolucao.md`](sprint-e8-seguranca-evolucao.md) e na §12 do PRD.
+
+### A pergunta que não tinha sido feita
+
+A parte 5 respondeu *"o que fazer"*. Não respondeu *"com que frequência"*. A pergunta apareceu quando o dono do projeto respondeu três coisas: **é um portfólio, não tem cliente, e são 2 h por dia** — com a nota de que a **C1** (transferir a #52 para a V2) já estava confirmada.
+
+A resposta a "2 h/dia" expôs um erro do plano: a **capacidade** nunca foi medida, foi herdada.
+
+### O erro: "42 SP em 6 dias (≈ 7 SP/dia)" era previsão, não fato
+
+O plano da parte 5 se apoiou nessa frase, que está no doc da sprint anterior como **"duração *estimada*: 6 dias úteis"**. O que o histórico mostra:
+
+| | |
+|---|---|
+| Período real | 24/08 (seg) → 10/09 (qui) = **14 dias úteis de calendário** |
+| Entradas no diário | 24/08, 25/08, **05/09 (sábado)**, 09/09, 10/09 — com um **buraco de 9 dias corridos** (26/08 → 04/09) |
+| Entregue | **36 dos 42 SP** (o É6 foi cancelado) |
+| **Unidade real de ritmo** | **SP por sessão de trabalho** — não SP por dia de calendário |
+
+Ou seja: 36 SP em **~5 sessões concentradas** espalhadas por 3 semanas. A "referência de 7 SP/dia" era a previsão de uma sessão de **dia inteiro**. A 2 h/dia, a métrica honesta é **SP por sessão**.
+
+### A correção do invariante: o número que "virou verdade" expira
+
+Vale registrar porque quase passou: o AC de **R$ 803,85 / 5 / 3** está no PRD, no doc do É8 e na issue #51. Ele é **verdade para o banco semeado hoje**. O `/stats` filtra `date(timestamp) = date('now','localtime')` (correção do #81) e as transações "de hoje" são carimbadas **no momento da simulação** — um banco gerado ontem devolve **R$ 0,00** hoje, sem que nada de código tenha mudado.
+
+Sem isso registrado, o próximo rito falha por um motivo que não tem relação com o código em revisão — e a reação natural da equipe é *"o AC está desatualizado"*.
+
+> **A invariante virou procedimento:**
+> ```bash
+> SIMULADOR_SEED=154622 python scripts/simulador_posto.py
+> ```
+> *"as transações de hoje do banco semeado: 5 `CONCLUIDO` somando **R$ 803,85**, 2 `EM_ABERTO`, 3 `FALHA`"*.
+> O **valor** é fixo pela semente; a **data** é a de hoje. Registrado em 3 lugares: PRD §12.3, doc do É8 §10 e AC da #51.
+
+### O reescopo: 59 SP → 40 SP, 3 ondas → 4 ciclos
+
+| | Antes (parte 5) | Agora |
+|---|---|---|
+| Escopo | 59 SP, 5 issues | **40 SP, 3 issues** (#51, #53, #55) |
+| #52 (TLS, 10 SP) | É8, Onda 3 condicionada | → **milestone "V2 — Operacional"** (D3) |
+| #54 (rate limit, 11 SP) | É8, Onda 2 | → **milestone "É9 — Hardening follow-up"** (D7) |
+| Janela | 26/10 → 06/11 | 26/10 → **04/12**, checkpoint **13/11** |
+| Trilha de auditoria | 3 SP (log) | **5 SP** — com a **É8-27b** (2 SP): `GET /auditoria` + card no painel |
+| Critério de demo | não existia | **5 itens registrados** (§9 do doc do É8) |
+
+**As 3 decisões novas (D6–D8):**
+
+- **D6 — capacidade = 2 h/dia → ~1,5 SP/sessão.** Três cenários: 2,5 SP/sessão → ~18/11 · **1,5 → ~04/12** · 0,7 → ~15/01. **O ciclo 1 é a medição**; o checkpoint de 13/11 recalibra.
+- **D7 — a #54 sai do É8.** 11 SP (20% do orçamento) para o item de menor valor visível do lote. Um portfólio ganha 10x mais com *"a validação saiu assinada"* do que com *"a API devolve 429"*.
+- **D8 — a trilha de auditoria vira visível (+2 SP).** Sem card na tela, a história do field service fica no log do servidor — invisível para quem abre o repo. Com ele, a demo conta o fluxo inteiro: técnico entra → painel valida → registro assinado.
+
+**E o que a C1 destravou:** a #52 saiu de "Onda 3 condicionada" para um milestone próprio, com data própria. A parte 5 tinha um dilema sem saída — *"tirá-la do milestone a transformaria em issue órfã"* — que na verdade era o milestone **do É8** segurando issue que não é do É8. A solução não era segurar: era criar o milestone certo.
+
+> **Nenhuma issue fica órfã.** A #52 e a #54 ganharam milestones próprios, e a regra "milestone fecha quando o épico fecha" continua valendo para os três.
+
+### Os 4 ciclos (na ordem da demo)
+
+| Ciclo | Épico | SP | Janela | Artefato |
+|---|---|---|---|---|
+| 1 | #51 | 6 | 26/10 → 29/10 | "o repo não guarda segredo" + **a taxa medida** |
+| 2 | #53 | 20 | 30/10 → 17/11 | **tela de login** |
+| 3 | #55a (É8-25, 26, 29, 30) | 7 | 18/11 → 24/11 | log JSON + `request-id` |
+| 4 | #55b (É8-27, 28) + **É8-27b** | 7 | 25/11 → 04/12 | 🎯 **a trilha no painel** |
+
+**E a dependência que se desamarrou:** na versão anterior, o épico de logging inteiro dependia da #53. O grafo justificava só **3 dos 12 SP** — a É8-27 (auditoria) precisa saber *quem* acessou, mas log JSON, `request-id` e redaction não dependem de ninguém. 9 SP de logging foram liberados para o ciclo 3 rodar em paralelo.
+
+### O enquadramento honesto: o É8 não dá agilidade
+
+O dono do projeto deu a nota de ordem do produto: **"um sistema como esse pode ser útil para o field service que está no posto de combustível e precisa de agilidade na hora de validar os equipamentos"**.
+
+O É8 **não dá agilidade**. Agilidade real — reinício de leitora, diagnóstico de VPAR, câmeras reais — é a **V2** (FR-14/16/17). O É8 dá **rastreabilidade**: *quem* validou, *quando*, *com que resultado*. A distinção está no doc do É8 §1 e no PRD §12.5, porque um portfólio que promete agilidade e entrega login erra o Expectations no teste — e a demo (§9) existe justamente para não errar.
+
+### O que foi feito nesta noite
+
+- **Doc do É8 reescrito** — 4 ciclos, taxa real, D1–D8, É8-27b, §9 (critério de demo), §3.1 (relatório da auditoria É8-01), 12 passos de rito
+- **PRD §12 reescrito** — D1–D8, 40 SP, 4 ciclos, a correção do invariante (§12.3) e a §12.5 reescrita
+- **`docs/sprint-v1-funcional-seguranca.md`** — tabela de rastreabilidade atualizada (#52 → V2, #54 → É9)
+- **Milestones novos** — "V2 — Operacional" (#52) e "É9 — Hardening follow-up" (#54); milestone É8 reescrito com 40 SP e `due_on` 04/12/2026
+- **5 issues reescritas** com os ciclos, o É8-27b e os ACs corrigidos; #52 e #54 com comentário de transferência
+- **É8-01 concluída** — auditoria dos 19 arquivos: **0 segredo real**, **3 IPs de LAN em 7 mocks**, 8 arquivos sensíveis por definição; histórico do git **não** precisa ser reescrito (a providência, se um dia entrar um segredo, é **rotacionar**)
+
+---
+
 ## 🗓️ Quarta, 21/10 (noite, parte 5) — Planejamento do É8: 5 decisões, 59 SP, 3 ondas
+
+> ⚠️ **Esta entrada é histórico.** O plano foi reescopado na **parte 6** (mesma noite): 59 SP → **40 SP**, 3 ondas → **4 ciclos**, #52 e #54 transferidas para milestones próprios, `due_on` 06/11 → **04/12**. As decisões D3 e D5 abaixo foram **substituídas** por D3/D7 (transferência) e D5/D6 (capacidade). O plano vivo está em [`docs/sprint-e8-seguranca-evolucao.md`](sprint-e8-seguranca-evolucao.md).
 
 > A entrada anterior fechou o container. Esta abre o conteúdo: o É8 deixou de ser "5 pendências de segurança sem prazo" e virou um sprint com função definida, tasks com critério de aceite, story points e data.
 

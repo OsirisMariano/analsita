@@ -99,6 +99,8 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - API de configuração dinâmica de dispositivos.
 
 > **Atualizado em 21/10/2026:** a autenticação e o controle de acesso continuam fora da **V1**, mas deixam de ser "sem destino" — estão planejados no **É8** (§12). A diferença entre a V1 e o É8: no É8 a autenticação é **opt-in por variável de ambiente**, exatamente como a API Key da #63, para que a V1 continue funcionando sem tela de login.
+>
+> **Reescopo de 21/10/2026:** o É8 passa a ter **40 SP em 4 ciclos**, e 2 pendências foram **transferidas para milestones próprios** — a TLS (#52) para **"V2 — Operacional"** e o rate limiting (#54) para **"É9 — Hardening follow-up"**. A §12 traz a decisão (D3/D7) e o motivo.
 
 ## 6. Requisitos Funcionais (V1)
 
@@ -181,11 +183,13 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - **Saúde do sistema:** alertas sobre equipamentos travados ou falhas de comunicação recorrentes (agregação por janela de tempo).
 - **Câmeras reais:** exibição de streams reais (RTSP) com status de conectividade.
 - **Leitoras reais:** comando de reinício efetivo via API + histórico de última leitura.
-- **Autenticação e roles:** login com perfis (analista, supervisor, admin). → **Parcialmente adiantado pelo É8** (§12): a **identidade** (login/senha, token, `auth.db`) sai no É8; a **matriz de roles** e as telas de administração continuam na V2 (decisão D4).
+- **Autenticação e roles:** login com perfis (analista, supervisor, admin). → **Parcialmente adiantado pelo É8** (§12): a **identidade** (login/senha, token, `auth.db`) sai no É8; a **matriz de roles** e as telas de administração continuam na V2 (decisão D4). → **A TLS (#52) foi transferida para este milestone** (decisão D3): ela é parte do mesmo bloco operacional.
 - **Configuração dinâmica dos dispositivos:** API para listar/editar os equipamentos monitorados, hoje fixos em `_DEFAULT_EQUIPAMENTOS` (promovido da V1 em 02/10).
 - **WebSockets:** substituir o polling por atualização push em tempo real.
 
-> **A V2 e o É8 não dividem a mesma sprint.** O É8 (59 SP, §12) consome a janela de 26/10 a 06/11. A V2 entra depois — e a §11.1 é explícita: endurecimento não pode consumir a entrega da funcionalidade.
+> **A V2 e o É8 não dividem a mesma sprint.** O É8 (40 SP, §12) consome a janela de 26/10 a 04/12, com checkpoint em 13/11. A V2 entra depois — e a §11.1 é explícita: endurecimento não pode consumir a entrega da funcionalidade.
+>
+> **A #52 (TLS/HTTPS) entra na V2** (decisão D3 de 21/10): certificado self-signed sem cliente, domínio ou operação contínua é teatro de alto custo, e é a mudança que mais pode quebrar a V1 (CORS, URL da API, preflight). Com 2 h/dia, o É8 entrega o que tem valor observável primeiro.
 
 ### V3 — Analítica & Proativa
 - **Histórico persistente:** séries temporais de status para análise de recorrência de falhas.
@@ -379,52 +383,96 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 
 ## 12. Planejamento do É8 — Segurança & Evolução (21/10/2026)
 
-> As 5 pendências que a §11.2 deixou "sem prazo" foram planejadas. O documento completo do sprint — decisões, tasks, critérios de aceite, ondas, riscos — está em [`docs/sprint-e8-seguranca-evolucao.md`](sprint-e8-seguranca-evolucao.md). Esta seção é o resumo executivo no PRD.
+> As 5 pendências que a §11.2 deixou "sem prazo" foram planejadas. O documento completo do sprint — decisões, tasks, critérios de aceite, ciclos, riscos — está em [`docs/sprint-e8-seguranca-evolucao.md`](sprint-e8-seguranca-evolucao.md). Esta seção é o resumo executivo no PRD.
+>
+> **Reescopado em 21/10/2026** após a resposta de capacidade (2 h/dia): 2 épicos foram transferidos para milestones próprios e o escopo caiu de 59 para **40 SP**, em **4 ciclos**.
 
-### 12.1 As 5 decisões que o plano exigia
+### 12.1 As decisões do plano (D1–D8)
 
 | # | Decisão | Escolha | Motivo |
 |---|---|---|---|
 | **D1** | Onde fica a identidade? | **`auth.db` separado** (SQLite gravável) | A API abre o banco de transactions com `mode=ro` (§7) — **não pode** gravar tabela de usuários no mesmo arquivo. OIDC exigiria IdP externo, incompatível com §11.1 |
-| **D2** | Onde fica o rate limit? | **In-process** (FastAPI), chave por IP/cliente | Mantém a #54 **independente** da #52 e permite as ondas em paralelo. `limit_req` do nginx amarraria as duas |
-| **D3** | A #52 (TLS) executa no É8? | **Escopo sim, execução na Onda 3 (última, condicionada).** Recomendação do PO: transferir para a **V2** | Certificado self-signed sem cliente, domínio ou operação contínua (§11.1) é teatro de alto custo, e é o épico que mais pode quebrar a V1 (muda CORS, URL da API e preflight) |
+| **D2** | Onde fica o rate limit? | **In-process** (FastAPI), chave por IP/cliente | Mantém a #54 **independente** da #52. `limit_req` do nginx amarraria as duas |
+| **D3** | A #52 (TLS) executa no É8? | ❌ **NÃO — transferida para o milestone "V2 — Operacional"** | Certificado self-signed sem cliente, domínio ou operação contínua (§11.1) é teatro de alto custo, e é o épico que mais pode quebrar a V1 (muda CORS, URL da API e preflight) |
 | **D4** | Roles entram? | **Não.** Identidade + 1 nível (`admin`/leitura) | A matriz `analista/supervisor/admin` é item da **V2** (§8) e, sem tela para usá-la, seria código morto |
-| **D5** | Quando fecha? | **06/11/2026**, começando em 26/10/2026 | 7 dias úteis cobrem as Ondas 1 e 2 (49 SP). Com a Onda 3 inteira, são 8,5 dias — a data serve para os dois cenários |
+| **D5** | Quando fecha? | **04/12/2026**, começando em 26/10/2026 — com **checkpoint em 13/11/2026** | A data é uma **previsão** (§12.2), recalibrada no checkpoint com a taxa medida no ciclo 1 |
+| **D6** | Qual é a capacidade real? | **2 h/dia → ~1,5 SP por sessão** | A "referência de 7 SP/dia" da sprint anterior era a *estimativa* do doc, não uma medição (§12.2) |
+| **D7** | A #54 (rate limit) fica no É8? | ❌ **NÃO — transferida para o milestone "É9 — Hardening follow-up"** | 11 SP (20% do orçamento) para o item de menor valor visível. A 2 h/dia o tempo é o recurso mais escasso, e o portfólio ganha 10x mais com "a validação saiu assinada" do que com "a API devolve 429" |
+| **D8** | A trilha de auditoria é visível? | ✅ **SIM — +2 SP (É8-27b)**: `GET /auditoria` (ring buffer em memória) + card na view de validação | Um portfólio sobre o field service que só mostra tela de login promete demais. Com a trilha no painel, a demo conta a história inteira: o técnico entra, o painel valida, o registro sai assinado |
 
-### 12.2 Escopo e estimativa
+> **D3 e D7 são o mesmo movimento:** *capar o É8, não justificá-lo*. O §11.1 é explícito — *"endurecimento não pode consumir a entrega da funcionalidade"*. Com 2 h/dia, "consumir" é literal.
+>
+> **Nenhuma issue fica órfã:** a #52 ganhou o milestone "V2 — Operacional" e a #54 ganhou o milestone "É9 — Hardening follow-up".
 
-| Épico | Issue | SP | Onda | Risco |
+### 12.2 Escopo, taxa real e os 4 ciclos
+
+**Escopo do É8 (40 SP):**
+
+| Épico | Issue | SP | Ciclo | Risco |
 |---|---|---|---|---|
 | Dados sensíveis fora do versionamento | [#51](https://github.com/OsirisMariano/analsita/issues/51) | 6 | 1 | 🟢 baixo |
-| Autenticação real (login/senha) | [#53](https://github.com/OsirisMariano/analsita/issues/53) | 20 | 1 | 🔴 alto |
-| Logging estruturado e auditoria | [#55](https://github.com/OsirisMariano/analsita/issues/55) | 12 | 2 | 🟡 médio |
-| Rate limiting | [#54](https://github.com/OsirisMariano/analsita/issues/54) | 11 | 2 | 🟡 médio |
-| TLS/HTTPS via nginx | [#52](https://github.com/OsirisMariano/analsita/issues/52) | 10 | 3 (condicionada) | 🔴 alto |
-| **TOTAL** | | **59** | | |
+| Autenticação real (login/senha) | [#53](https://github.com/OsirisMariano/analsita/issues/53) | 20 | 2 | 🔴 alto |
+| Logging estruturado e auditoria | [#55](https://github.com/OsirisMariano/analsita/issues/55) | 14 | 3 e 4 | 🟡 médio |
+| **TOTAL** | | **40** | | |
 
-**Referência de capacidade:** a sprint anterior entregou 42 SP em 6 dias (≈7 SP/dia, 1 dev).
+**Transferidos (mantêm milestone próprio, sem órfãs):**
+
+| Épico | Issue | SP | Destino | Decisão |
+|---|---|---|---|---|
+| TLS/HTTPS via nginx | [#52](https://github.com/OsirisMariano/analsita/issues/52) | 10 | Milestone **"V2 — Operacional"** | D3 |
+| Rate limiting | [#54](https://github.com/OsirisMariano/analsita/issues/54) | 11 | Milestone **"É9 — Hardening follow-up"** | D7 |
+
+**A taxa real (correção de uma estimativa que virou fato).** O primeiro plano apoiou-se em *"a sprint anterior entregou 42 SP em 6 dias (≈7 SP/dia)"*. Isso é a **estimativa do doc**, não o fato: a sprint anterior entregou **36 dos 42 SP** (o É6 foi cancelado) entre **24/08 e 10/09 = 14 dias úteis de calendário**, em **~5 sessões concentradas** (o diário registra 24/08, 25/08, 05/09 — um sábado — 09/09 e 10/09, com um buraco de 9 dias corridos no meio). A unidade real de ritmo é **SP por sessão**, não SP por dia.
+
+**Capacidade deste sprint: 2 h/dia = 1 sessão curta por dia.** Três cenários — e o **ciclo 1 é a medição**:
+
+| Cenário | Taxa | 40 SP | É8 fecha |
+|---|---|---|---|
+| Otimista | 2,5 SP/sessão | 16 dias úteis | ~18/11/2026 |
+| **Central** | **1,5 SP/sessão** | 27 dias úteis | ~**04/12/2026** ← **D5** |
+| Pessimista | 0,7 SP/sessão | 57 dias úteis | ~15/01/2027 |
+
+**Os 4 ciclos (na ordem da demo):**
+
+| Ciclo | Épico | SP | Janela (cenário central) | Artefato que fecha o ciclo |
+|---|---|---|---|---|
+| 1 | #51 | 6 | 26/10 → 29/10 | "o repo não guarda segredo" + **a taxa real medida** |
+| 2 | #53 | 20 | 30/10 → 17/11 | **tela de login** — "cada técnico tem seu acesso" |
+| 3 | #55a (É8-25, 26, 29, 30) | 7 | 18/11 → 24/11 | log JSON + `request-id` |
+| 4 | #55b (É8-27, 28) + É8-27b | 7 | 25/11 → 04/12 | 🎯 **a trilha de auditoria no painel** — "a validação saiu assinada" |
+
+> **O `due_on` de 04/12 é previsão, não promessa.** O **checkpoint de 13/11/2026** recalibra data e escopo com a taxa medida. O corte, se houver, é sempre na **Onda 2**, nunca no ciclo 1.
 
 ### 12.3 O que a auditoria do código mudou no escopo
 
 Três achados de 21/10/2026 reescreveram o plano antes da estimativa:
 
-1. **Não há segredo no `mock_data/` hoje.** Os 19 arquivos versionados são placeholders ("mock license data", `Server=192.0.2.1` — RFC 5737). O único dado não-placeholder são **3 IPs de LAN** em 7 mocks. A #51 é, portanto, **guardrail de futuro**, não limpeza — e **o histórico do git não precisa ser reescrito** (o que invalidaria as tags `v1.0.0`/`v1.0.1` sem comprar segurança).
+1. **Não há segredo no `mock_data/` hoje.** Os 19 arquivos versionados são placeholders ("mock license data", `Server=192.0.2.1` — RFC 5737). O único dado não-placeholder são **3 IPs de LAN** em 7 mocks. A #51 é, portanto, **guardrail de futuro**, não limpeza — e **o histórico do git não precisa ser reescrito** (o que invalidaria as tags `v1.0.0`/`v1.0.1` sem comprar segurança). Auditoria completa na §3.1 do doc do sprint.
 2. **A API é `mode=ro` no banco de transactions** (§7). Uma tabela de usuários no mesmo arquivo é impossível — daí o `auth.db` separado (D1).
 3. **O frontend não tem nenhuma ocorrência de `login`/`token`/`Authorization`.** Autenticação obrigatória sem tela de login quebraria o painel — exatamente o 403 da §11.4. Daí o **modo opt-in** (`AUTH_ENABLED`), que espelha o padrão que a #63 já provou para a API Key.
 
+**Um quarto achado, do próprio rito:** a **referência do painel decai com a data**. O `/stats` filtra `date(timestamp) = date('now','localtime')` (correção do #81) e as transações "de hoje" são carimbadas **no momento da simulação** — um banco gerado ontem devolve **R$ 0,00** hoje. Por isso a invariante do É8 é um **procedimento**, não um número literal:
+
+> **Antes de cada sessão de rito:** `SIMULADOR_SEED=154622 python scripts/simulador_posto.py`
+> **Invariante:** *as transações de hoje do banco semeado: 5 `CONCLUIDO` somando **R$ 803,85**, 2 `EM_ABERTO`, 3 `FALHA`*. O **valor** é fixo pela semente; a **data** é a de hoje.
+
 ### 12.4 Regras de execução herdadas
 
-- **Rito de 8 passos (§10) por épico**, não só no fim da sprint — a §11.3 registra o preço de endurecer sem observar.
-- **A referência do painel não pode mudar:** `/stats` em **R$ 803,85 / 5 concluídas / 3 falhas** (o número que "virou verdade" no #80).
+- **Rito de 8 passos (§10) por ciclo**, não só no fim da sprint — a §11.3 registra o preço de endurecer sem observar. Os passos 9–12 são o acréscimo do É8 (login, log, auditoria, `git ls-files`).
+- **A referência do painel não pode mudar:** `/stats` em **R$ 803,85 / 5 concluídas / 3 falhas** — **do banco semeado no dia** (ver §12.3).
 - **Modo opt-in testado nos dois estados** (feature ligada e desligada).
 - **0 respostas 401/403 novas** no caminho do painel.
 - **Milestone fecha quando o épico fecha** (a regra escrita em `docs/sprint-v1-funcional-seguranca.md`).
+- **A É8-02 e a É8-03 entram no mesmo PR**: `mock_data/` alimenta os arquivos validados via 7 mounts do compose — um `git rm --cached` sem fixture genérica no mesmo caminho quebra o "15 arquivos, 0 ERRO" no clone limpo.
+- **Critério de qualidade externo (§9 do doc do sprint):** o É8 fecha com uma **demo registrada** de 5 itens (tela de login, validação dos 15 arquivos, trilha na tela, log JSON com `request-id`, `GET /auditoria`). Sem os 5, o É8 não fecha — mesmo que as 40 tasks estejam em DONE.
 
 ### 12.5 A regra que o É8 não pode quebrar
 
 > O §11.1 é explícito: *"endurecimento não pode consumir a entrega da funcionalidade"*.
 
-O É8 **não** disputa espaço com a V2 (§8) dentro do mesmo sprint. Os 7 itens da V2 (diagnóstico de VPAR, saúde do sistema, câmeras reais, leitoras reais, config dinâmica, WebSockets, auth+roles) **não fazem parte do É8** — e a §11.3 já registrou o que acontece quando hardening come a entrega: 42 SP de segurança enquanto a V1 nunca foi demonstrada funcionando. A ordem proposta é **É8 primeiro, V2 depois**, e a V2 é grande demais para entrar junto.
+O É8 **não** disputa espaço com a V2 (§8) dentro do mesmo sprint. Os 7 itens da V2 (diagnóstico de VPAR, saúde do sistema, câmeras reais, leitoras reais, config dinâmica, WebSockets, auth+roles) **não fazem parte do É8** — e a §11.3 já registrou o que acontece quando hardening come a entrega: 42 SP de segurança enquanto a V1 nunca foi demonstrada funcionando. A ordem proposta é **É8 primeiro, V2 depois**.
+
+Com 2 h/dia, essa disputa deixa de ser retórica: **o É8 são ~3 meses de noites**, e a V2 é o que move a métrica de sucesso do §4.2 (reduzir MTTR). O É8 entrega **confiança e rastreabilidade** ("a validação saiu assinada: quem, quando, o quê"); a **agilidade** do field service — reinício real de leitora, diagnóstico de VPAR, câmeras reais — é a V2. A recomendação do PO segue: **É8 primeiro** (é o milestone planejado, e o critério de demo da §9 é o que um portfólio precisa), **V2 depois** — mas a decisão de ordem é do dono do projeto, e precisa ser tomada com a §4.2 aberta na mesa.
 
 ---
 
