@@ -247,8 +247,16 @@ def obter_resumo():
             conn.row_factory = sqlite3.Row # Essencial para transformar em dicionário
             cursor = conn.cursor()
             
-            # 1. Agregado financeiro
-            cursor.execute("SELECT status, COUNT(*), SUM(valor) FROM transacoes GROUP BY status")
+            # 1. Agregado financeiro — só o dia de hoje (#81)
+            # O card se chama "Vendas Hoje": sem o recorte por dia ele somava
+            # o banco inteiro e mentia quando havia dado antigo. O recorte é
+            # por dia civil no fuso do servidor, e `date()` aceita tanto o
+            # formato "YYYY-MM-DD HH:MM:SS" quanto o "YYYY-MM-DDTHH:MM:SS".
+            cursor.execute(
+                "SELECT status, COUNT(*), SUM(valor) FROM transacoes"
+                " WHERE date(timestamp) = date('now', 'localtime')"
+                " GROUP BY status"
+            )
             rows = cursor.fetchall()
             for row in rows:
                 status, qtd, soma_valor = row[0], row[1], row[2]
