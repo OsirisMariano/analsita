@@ -15,6 +15,7 @@ não depender do banco do ambiente.
 import hashlib
 import sqlite3
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -41,17 +42,29 @@ CREATE TABLE transacoes (
 """
 
 
+def _meio_dia_de_hoje():
+    """Meio-dia de hoje.
+
+    As transações do teste precisam ser de **hoje**: com o recorte por dia
+    do #81, uma data fixa faria o teste passar só no dia em que foi
+    escrito e falhar no dia seguinte. Ancorar no meio-dia também evita a
+    virada da meia-noite.
+    """
+    return datetime.now().replace(hour=12, minute=0, second=0, microsecond=0)
+
+
 def _criar_banco(caminho):
-    """Cria um banco com o schema do simulador e 3 transações."""
+    """Cria um banco com o schema do simulador e 3 transações de hoje."""
+    base = _meio_dia_de_hoje()
     conn = sqlite3.connect(caminho)
     conn.execute(SCHEMA)
     conn.executemany(
         "INSERT INTO transacoes (timestamp, pista, veiculo_tag, valor, status)"
         " VALUES (?, ?, ?, ?, ?)",
         [
-            ("2026-10-21 10:00:00", 1, "TAG-1001", 100.50, "CONCLUIDO"),
-            ("2026-10-21 10:01:00", 2, "TAG-1002", 200.00, "FALHA"),
-            ("2026-10-21 10:02:00", 3, "TAG-1003", 300.25, "EM_ABERTO"),
+            (str(base), 1, "TAG-1001", 100.50, "CONCLUIDO"),
+            (str(base + timedelta(minutes=1)), 2, "TAG-1002", 200.00, "FALHA"),
+            (str(base + timedelta(minutes=2)), 3, "TAG-1003", 300.25, "EM_ABERTO"),
         ],
     )
     conn.commit()
@@ -92,7 +105,8 @@ def test_conexao_rejeita_escrita(banco):
         with pytest.raises(sqlite3.OperationalError) as erro:
             conn.execute(
                 "INSERT INTO transacoes (timestamp, pista, veiculo_tag, valor, status)"
-                " VALUES ('2026-10-21 11:00:00', 1, 'TAG-9999', 1.0, 'CONCLUIDO')"
+                " VALUES (?, 1, 'TAG-9999', 1.0, 'CONCLUIDO')",
+                (str(_meio_dia_de_hoje()),),
             )
         assert "readonly" in str(erro.value).lower()
     finally:

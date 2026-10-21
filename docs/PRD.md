@@ -5,10 +5,10 @@
 | Campo | Detalhe |
 |---|---|
 | **Produto** | Analista SemParar |
-| **Versão do documento** | 1.5 |
-| **Status** | **V1 validada no browser** — todos os critérios de aceite do §10 foram confirmados em container isolado (#67). #65 (polling), #66 (mount DS_SFTP), #69 (`build.args` morto), #74 (banco somente-leitura), #75 (URL da API sem `.env`), #78 (botão de refresh), #79 (categoria zabbix) e #80 (semente do simulador) entregues |
+| **Versão do documento** | 1.6 |
+| **Status** | **V1 validada no browser** — todos os critérios de aceite do §10 foram confirmados em container isolado (#67). #65 (polling), #66 (mount DS_SFTP), #69 (`build.args` morto), #74 (banco somente-leitura), #75 (URL da API sem `.env`), #78 (botão de refresh), #79 (categoria zabbix), #80 (semente do simulador) e #81 (card "Vendas Hoje" filtrado por dia) entregues |
 | **Data** | 21/10/2026 |
-| **Última revisão** | 21/10/2026 — [#67](https://github.com/OsirisMariano/analsita/issues/67) (validação integrada em container isolado: 8/8 passos, 6/6 ACs do §10 confirmados no browser), [#82](https://github.com/OsirisMariano/analsita/issues/82) (contagem de falhas no card "Vendas Hoje") |
+| **Última revisão** | 21/10/2026 — [#81](https://github.com/OsirisMariano/analsita/issues/81) (card "Vendas Hoje" só conta o dia de hoje; FR-02 corrigido na §11.6), [#67](https://github.com/OsirisMariano/analsita/issues/67) (validação integrada em container isolado: 8/8 passos, 6/6 ACs do §10 confirmados no browser), [#82](https://github.com/OsirisMariano/analsita/issues/82) (contagem de falhas no card "Vendas Hoje") |
 | **Autor** | Equipe de Desenvolvimento |
 | **Stack** | Python/FastAPI, Vue 3, Tailwind CSS, SQLite, Docker |
 
@@ -232,7 +232,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 > Exceção mantida: o critério de `OPTIONS` foi marcado por ter evidência de runtime direta (pytest + `curl` contra servidor real), detalhada na linha correspondente.
 
 - [x] Dashboard exibe online/offline de todos os equipamentos cadastrados. — ✅ **Confirmado no browser em 21/10/2026 (#67).** 4 cartões na tela, cada um com o status: "Antena Lado A OFFLINE", "Antena Lado B OFFLINE", "Câmera VPAR OFFLINE", "Saída Internet ONLINE" (só o `8.8.8.8` responde no ambiente isolado — os `192.168.1.x` são da rede real do posto)
-- [x] Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — ✅ **Confirmado no browser em 21/10/2026 (#67).** Card "Vendas Hoje" com `R$ 803,85`, `Sucesso: 5` e `Falhas: 3` — os três batem com o `GET /stats` do container. A contagem de falhas só passou a aparecer depois do #82: até então a API devolvia e a tela descartava
+- [x] Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — ✅ **Confirmado no browser em 21/10/2026 (#67), revalidado em 21/10/2026 (#81).** Card "Vendas Hoje" com `R$ 803,85`, `Sucesso: 5` e `Falhas: 3` — os três batem com o `GET /stats` do container. A contagem de falhas só passou a aparecer depois do #82: até então a API devolvia e a tela descartava. O "**do dia**" só passou a ser verdade depois do #81 — a agregação somava o banco inteiro (ver §11.4)
 - [x] Últimas 5 transações aparecem com horário, placa, valor e status colorido. — ✅ **Confirmado no browser em 21/10/2026 (#67).** 5 linhas com horário, TAG, valor e badge — cor conferida no `getComputedStyle`: FALHA `rgb(239,68,68)` sobre `rgb(254,226,226)`, CONCLUIDO `rgb(16,185,129)` sobre `rgb(225,249,240)`, EM_ABERTO `rgb(255,171,0)` sobre `rgb(255,244,229)`
 - [x] Badge de erros na sidebar reflete os arquivos com status `ERRO`. — ✅ **Confirmado no browser em 21/10/2026 (#67), nos dois sentidos.** Com `/arquivos` → 15 arquivos e 0 ERRO, a badge some (só renderiza quando o contador é maior que zero). Com um mock removido à força (`mock_data/var/DS_SFTP/config.json`), `/arquivos` → 1 ERRO e a badge aparece como "Validação de Arquivos 1". O mock foi restaurado depois
 - [x] Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — ✅ **Confirmado no browser em 21/10/2026 (#67).** As 4 rotas navegadas (Câmeras, Leitoras, Validação de Arquivos, Validação de Dados) renderizam com console limpo
@@ -311,6 +311,24 @@ A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 fu
 >
 > **O que a Fase B provou sobre o método.** A §11.3 e a §11.4 já apontavam que hardening sem verificação end-to-end produz entregas que não rodam. A Fase B mostra a mesma coisa do outro lado: **funcionalidade entregue sem verificação observada produz telas que não funcionam.** Nenhum dos 4 defeitos (#65, #78, #79, #82) era visível por leitura de código — todos passaram pelo build, pelo eslint, pelo pytest e pela CI. Só apareceram quando alguém olhou a tela rodando.
 
+**Estado em 21/10/2026 (#81 — o card "Vendas Hoje" não contava o dia):** a última dívida registrada na Fase B, fechada.
+
+| | |
+|---|---|
+| **O defeito** | O FR-02 pede o total de vendas **do dia**. A agregação do `/stats` (`SELECT status, COUNT(*), SUM(valor) FROM transacoes GROUP BY status`) somava o banco **inteiro**. O card dizia "Vendas Hoje" e mostrava a soma de tudo que estivesse gravado, inclusive de meses atrás |
+| **A correção** | `WHERE date(timestamp) = date('now', 'localtime')` — dia civil no fuso do servidor. `date()` aceita tanto `YYYY-MM-DD HH:MM:SS` quanto `YYYY-MM-DDTHH:MM:SS`, então o recorte não depende de como o carimbo de tempo foi gravado |
+| **O que NÃO foi filtrado** | A tabela "5 últimas transações" — ela mostra as mais recentes de **qualquer** dia, que é o que o AC do §10 promete. Filtrar a tabela esconderia do operador justamente o que ele precisa ver: uma transação antiga que deu errado |
+| **O contrato da API** | Não mudou. Mesmas chaves, mesmos nomes. O frontend não mudou — **zero linha** |
+| **A referência** | Não mudou. As 10 transações de hoje são as mesmas, transação a transação: R$ 803,85, 5 concluídas, 3 falhas |
+
+> **Por que esse defeito sobreviveu desde 03/10 — e por que a auditoria da §11.6 não pegou.** Com o banco de referência, as 10 transações são de hoje: o card mostrava o número certo, e o bug ficava invisível. A auditoria FR-01..FR-19 marcou **FR-02 "✅ Conforme"** — mas conferiu que o *endpoint* existia, não que o *filtro* existia. É a mesma falha de método da §11.4 com o preflight: a verificação existia, mas cobria o caminho que **já** funcionava.
+>
+> **A prova de que a correção funciona — e a prova de que ela era necessária.** Com o filtro, o card mostra **R$ 803,85**; sem ele, o mesmo banco mostraria **R$ 1.648,86** (as 4 transações `CONCLUIDO` de 13, 14, 17 e 19/10 somam R$ 845,01). A prova decisiva foi injetar uma transação de ontem com **R$ 5.000,00**: o card continuou em R$ 803,85, enquanto o valor sem filtro iria a R$ 6.648,86.
+>
+> **O simulador ganhou histórico de propósito.** Sem transações de dias anteriores, o recorte seria invisível no produto — o banco só teria movimento de hoje, e o card mostraria o mesmo valor com ou sem o filtro. Uma regressão futura passaria despercebida: exatamente como este bug sobreviveu. O simulador agora gera 6 transações de 1 a 7 dias atrás, **além** das 10 de hoje (que seguem idênticas). `SIMULADOR_HISTORICO` controla a quantidade.
+>
+> **Um bomba-relógio encontrada no caminho.** O fixture de `backend/tests/test_readonly_db.py` criava as transações com a data `2026-10-21` — o dia em que o teste foi escrito. Com o recorte por dia, ele passava só naquele dia e passaria a falhar no dia seguinte. Foi provado: com o fixture no dia anterior, o teste falha com `assert 0 == 1`. As datas agora são relativas (meio-dia de hoje), o que também evita a virada da meia-noite.
+
 > **Por que o mount de `./data` continua gravável.** A tentativa natural era colocar `:ro` no volume do compose, mas o `entrypoint.sh` precisa **criar** o banco quando ele ainda não existe — um diretório somente-leitura impediria isso. A garantia que importa ("a API não escreve") foi posta no lugar certo: dentro do programa, com `mode=ro`. O isolamento de filesystem continua não implementado e está fora do escopo da V1.
 
 > ⚠️ **Sobre a numeração de linhas:** o `ApiKeyMiddleware` ocupa `backend/app/main.py:54-88` na revisão de 03/10. A referência `41-48` aqui estava defasada desde a #63.
@@ -331,7 +349,7 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 | FR | Veredito | Evidência |
 |---|---|---|
 | FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Destravado em runtime por §11.4 |
-| FR-02 | ✅ Conforme | `GET /stats` → `transacoes` |
+| FR-02 | 🔧 **Corrigido em 21/10/2026** | O FR pede o total de vendas **do dia**; a agregação do `/stats` somava o banco inteiro, sem recorte. A auditoria de 02/10 marcou "Conforme" por ver o endpoint existir, não o filtro existir — e a §11.4 registra o caso. Correção em #81: `WHERE date(timestamp) = date('now', 'localtime')`. A tabela "5 últimas transações" segue sem filtro, como o AC do §10 promete |
 | FR-03 | ✅ **Corrigido em 21/10** | `setInterval(carregarDados, 5000)` com guarda de sobreposição (`carregando`) e `clearInterval` no `onUnmounted` (`HomeView.vue`). Issue #65 |
 | FR-04 | ✅ Conforme | `disparar_ping()`: `ping -c 1 -W 1` + gate `ip_address()` (SEC-06) |
 | FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:118-124`) |
