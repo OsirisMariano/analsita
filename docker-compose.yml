@@ -22,6 +22,10 @@ services:
       - ./mock_data/etc/logrotate.d:/etc/logrotate.d:ro
       - ./mock_data/var/abastece/SLT:/var/abastece/SLT:ro
       - ./mock_data/var/abastece/certificate:/var/abastece/certificate:ro
+      # #66: sem este mount o /var/DS_SFTP/config.json dá ERRO em /arquivos e
+      # a validação "config" (SFTP_SERVER) falha junto. O mock já existia,
+      # faltava montar.
+      - ./mock_data/var/DS_SFTP:/var/DS_SFTP:ro
       - ./mock_data/home:/home:ro
     ports:
       - "8000:8000"
