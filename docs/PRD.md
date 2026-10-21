@@ -5,10 +5,10 @@
 | Campo | Detalhe |
 |---|---|
 | **Produto** | Analista SemParar |
-| **Versão do documento** | 1.3 |
-| **Status** | **V1 destravada no código** — #63 (API key opt-in) e #64 (preflight CORS) entregues; falta a confirmação no browser (#67) |
-| **Data** | 03/10/2026 |
-| **Última revisão** | 03/10/2026 — [#64](https://github.com/OsirisMariano/analsita/issues/64) (preflight CORS) |
+| **Versão do documento** | 1.4 |
+| **Status** | **V1 destravada no código** — #63 (API key opt-in) e #64 (preflight CORS) entregues; #65 (polling) e #66 (mount DS_SFTP) entregues; falta a confirmação no browser (#67) |
+| **Data** | 21/10/2026 |
+| **Última revisão** | 21/10/2026 — [#65](https://github.com/OsirisMariano/analsita/issues/65) (polling sem sobreposição), [#66](https://github.com/OsirisMariano/analsita/issues/66) (mount `var/DS_SFTP`), [#69](https://github.com/OsirisMariano/analsita/issues/69) (`build.args` morto) |
 | **Autor** | Equipe de Desenvolvimento |
 | **Stack** | Python/FastAPI, Vue 3, Tailwind CSS, SQLite, Docker |
 
@@ -105,7 +105,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 ### 6.1 Dashboard
 - **FR-01** — O sistema deve exibir o resumo agregado de dispositivos: total, online e offline. *(Backend: `GET /stats` → `monitoramento`; Frontend: `HomeView.vue`)*
 - **FR-02** — O sistema deve exibir o total de vendas do dia (soma de `valor` das transações `CONCLUIDO`) e a contagem de sucesso/falhas. *(Backend: `GET /stats` → `transacoes`; Frontend: `HomeView.vue`)*
-- **FR-03** — O dashboard deve atualizar os dados automaticamente a cada **5 segundos** (polling). *(Frontend: `HomeView.vue` → `setInterval`)*
+- **FR-03** — O dashboard deve atualizar os dados automaticamente a cada **5 segundos** (polling), sem sobreposição: uma nova requisição só é disparada quando a anterior terminou. *(Frontend: `HomeView.vue` → `setInterval` + guarda `carregando` + `clearInterval` no `onUnmounted`)*
 
 ### 6.2 Monitoramento de conectividade
 - **FR-04** — O sistema deve executar `ping` (1 pacote, timeout 1s) para cada dispositivo cadastrado e retornar status `Online`/`Offline`. *(Backend: `disparar_ping()`)*
@@ -270,6 +270,18 @@ A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 fu
 
 **Estado em 03/10/2026:** ambas entregues. `GET /stats`, `/monitoramento`, `/transacoes`, `/arquivos` e `/validacao-dados` respondem **200** no fluxo normal e o preflight responde **200** nas 7 rotas. Falta apenas a confirmação no browser, que é o rito da **#67**.
 
+**Estado em 21/10/2026 (#65, #66, #69):** três correções de comportamento, todas com evidência de runtime em container real:
+
+| Issue | Correção | Evidência |
+|---|---|---|
+| #65 | Polling sem sobreposição (FR-03) | `HomeView.vue` com guarda `carregando` + `clearInterval` no `onUnmounted` |
+| #66 | `mock_data/var/DS_SFTP` montado no compose | `GET /arquivos` → **15 arquivos, 0 ERRO** (era 1 ERRO: `config.json`); `GET /validacao-dados` → categoria `config` voltou a `ok` |
+| #69 | `build.args` morto removido do compose | `docker compose config` válido e sem `VITE_API_URL` embutido |
+
+> **Sobre os "13 ERROS" de `/arquivos` medidos em 01/10 (#66):** o número era **artefato do ambiente de medição**, não um defeito do produto. A medição foi feita com a API rodando **no host** (porta 8899), onde os caminhos de container (`/etc/abastece`, `/var/abastece/SLT`, `/home/pi`, `/etc/zabbix`, `/var/DS_SFTP`) não existem — só `/etc/hosts` e `/etc/hostname` batem, e são exatamente 2 → 13 ERROS. Dentro do container, o `mock_data` cobre 14 dos 15; o único que falhava era `/var/DS_SFTP/config.json`, cujo mock existia mas **não estava montado** no compose. Corrigido em 21/10.
+>
+> **Lição:** medir estado de produto dentro do ambiente em que ele roda. `/arquivos` e `/validacao-dados` só fazem sentido com os volumes do compose montados.
+
 > ⚠️ **Sobre a numeração de linhas:** o `ApiKeyMiddleware` ocupa `backend/app/main.py:54-88` na revisão de 03/10. A referência `41-48` aqui estava defasada desde a #63.
 
 > **Por que a CI não pegou o preflight — com uma correção ao diagnóstico original.** A versão anterior deste documento afirmava que o `TestClient` *"não simula preflight CORS"*. **Isso estava errado**, verificado em 03/10: o `TestClient` **executa** o caminho de `OPTIONS` de verdade quando o teste o solicita explicitamente — a requisição percorre a pilha de middlewares e o `CORSMiddleware` responde com os cabeçalhos corretos.
@@ -289,7 +301,7 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 |---|---|---|
 | FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Destravado em runtime por §11.4 |
 | FR-02 | ✅ Conforme | `GET /stats` → `transacoes` |
-| FR-03 | ⚠️ **Parcial** | `setInterval(carregarDados, 5000)` existe (`HomeView.vue:34`), mas `carregarDados` é `async` **sem guarda de sobreposição** — requisições lentas acumulam. Issue #65 |
+| FR-03 | ✅ **Corrigido em 21/10** | `setInterval(carregarDados, 5000)` com guarda de sobreposição (`carregando`) e `clearInterval` no `onUnmounted` (`HomeView.vue`). Issue #65 |
 | FR-04 | ✅ Conforme | `disparar_ping()`: `ping -c 1 -W 1` + gate `ip_address()` (SEC-06) |
 | FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:118-124`) |
 | FR-06 | ✅ Conforme | `DispositivoCard.vue` |
@@ -307,7 +319,7 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 | FR-18 | ✅ Conforme | `GET /health` |
 | FR-19 | 🔧 **Corrigido em 02/10, refined em 03/10** | Allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório **quando `API_KEY` está definida** (opt-in, #63) + `OPTIONS` isento por método (#64). Ver §6.7 |
 
-**Resumo da auditoria:** 14 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), 1 parcial com issue aberta (FR-03).
+**Resumo da auditoria:** 15 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), **nenhum parcial em aberto** (FR-03 corrigido em 21/10, #65).
 **Nenhum requisito da §6 está ausente no código.** O bloqueio era de integração (§11.4) e foi removido em 03/10; falta a confirmação no browser (#67).
 
 ---

@@ -5,6 +5,67 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 — Épico 7: #65, #66 e #69 entregues
+
+### Entregue (3 de 7 tasks do É7)
+- ✅ **#65 (T3) — FR-03: polling sem sobreposição** → `HomeView.vue`
+- ✅ **#66 (T4) — mount `var/DS_SFTP`** → `docker-compose.yml` (diagnóstico do "13/15 em ERRO" incluído)
+- ✅ **#69 (T7) — remover `build.args` morto** → `docker-compose.yml`
+- Branch: `feature/epico7-polling-e-mocks` (a partir de `develop` @ `b75c02a`)
+
+### O que foi feito
+
+**#65 — polling sem sobreposição**
+- `carregando` (ref) como guarda: `carregarDados` retorna cedo se a requisição anterior está em voo
+- `finally` libera a guarda — um erro na API não trava o loop
+- `clearInterval` no `onUnmounted` (antes o timer vazava a cada troca de rota)
+- `onMounted` guarda o id do intervalo em `intervalo`
+
+**#66 — mount `mock_data/var/DS_SFTP`**
+- **Diagnóstico:** os "13 de 15 em ERRO" medidos pelo PO em 01/10 eram **artefato do ambiente de medição**. A API foi medida no host (porta 8899), onde os caminhos de container não existem — só `/etc/hosts` e `/etc/hostname` batem, exatamente 2 → 13 ERROS. Dentro do container o `mock_data` cobre 14 dos 15.
+- **Lacuna real:** `mock_data/var/DS_SFTP/config.json` existia mas `./mock_data/var/DS_SFTP` **não estava montado** → `config.json` ERRO em `/arquivos` e a categoria `config` (SFTP_SERVER) quebrada em `/validacao-dados`.
+- **Fix:** 1 linha de mount. Resultado: `/arquivos` → **15/15 OK, 0 ERRO**; `config` voltou a `ok`.
+
+**#69 — `build.args` morto**
+- Removido o bloco `args: VITE_API_URL: http://api:8000` do serviço `frontend`. O `frontend/Dockerfile` nunca declarou `ARG`, então era ignorado — e virava armadilha: declarar o `ARG` embutiria o hostname **interno** `api` no bundle, quebrando o browser com DNS error em produção (e só depois do deploy).
+
+### Validação (gate local)
+
+| Gate | Resultado |
+|---|---|
+| `pytest backend/tests` | **50 passed** (venv via `uv` em `/tmp/opencode`, py3.11) |
+| `flake8 backend --select=E9,F63,F7,F82` | **0** |
+| `npm run build` (dentro da imagem) | **✓ built in 3.56s** (1828 modules) |
+| `docker compose config` | válido, sem `VITE_API_URL` |
+| Container real (`docker compose up -d api`) | `/health` 200 · `/arquivos` 0 ERRO · `/stats` 4 disp., 4 concl., 3 fal., **R$ 803,85** · `OPTIONS /stats` 200 |
+
+> Números de `/stats` batem **exatamente** com a referência do PO na #67 (R$ 803,85 / 10 transações / 4 dispositivos).
+
+### Gotcha novo
+
+- `frontend/node_modules` local está **vazio e é root-owned** → `npm run build` na host falha com `vite: not found`. Workaround: `docker build -t analsita-frontend:validate ./frontend && docker run --rm analsita-frontend:validate npm run build` (mesmo caminho da CI, sem sujar a host).
+- `docker compose down` **não aceita `--rm`** nesta versão (v5.5.0) — use `docker compose down -v`.
+
+### Achado novo **fora** do backlog (abrir issue)
+
+- **`/validacao-dados` → categoria `zabbix` retorna "1 erro(s)"** — preexistente, não introduzido aqui. A regra em `validacoes_config.py:81` valida `/etc/zabbix/zabbix_agent2.conf` com `tipo: json_valor`, mas o arquivo é **INI** (`Server=192.0.2.1`), não JSON → `json.loads` falha → `json_invalido`. Correção provável: trocar por `{"tipo": "texto", "padrao": "Server="}`.
+
+### Restante do É7
+
+- **#67 (T5) — validação integrada `docker compose up`** ← **próximo e é o que fecha a V1**: 8 passos, incluindo o browser (dashboard, badge, navegação, console, 2 ciclos de polling). Regra do PRD §10: só marcar `[x]` com evidência observada no browser.
+- **#68 (T6)** — entregue na substância (PRD v1.3 + esta entrada); falta apenas fechar a issue.
+- **#63, #64** — entregues, issues ainda abertas. Fechar.
+- **#66, #69, #65** — fecham com este PR.
+- Backlog sem prazo: #52 (TLS), #53 (login), #54 (rate limit), #55 (logging estruturado).
+
+### Dívidas conhecidas (fora do É7)
+
+- `frontend/.env` **não é versionado** (cai no `.env` do `.gitignore` da raiz) → em clone limpo o frontend sobe sem `VITE_API_URL` e faz `fetch("undefined/stats")`. Derruba o AC do PRD §10 *"Toda a solução sobe com `docker compose up`"*. Fix: fallback no código + `frontend/.env.example` versionado.
+- **SQLite ainda não é read-only** (PRD §7 RNF): `docker-compose.yml:18` monta `./data` sem `:ro`. Decisão do PO em 21/10: read-only **no código** (`mode=ro` na URI do `sqlite3.connect`), mantendo o mount gravável porque o `entrypoint.sh` precisa escrever o banco quando ele não existe.
+- `scripts/simulador_posto.py` é **aleatório** → os números de referência da #67 não se reproduzem em clone limpo. Fix proposto: `random.seed()` fixo.
+
+---
+
 ## 🗓️ Quinta, 10/09 — Épico 4 entregue · board sincronizado
 
 ### Entregue (5 de 6 épicos)
