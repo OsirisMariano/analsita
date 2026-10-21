@@ -78,7 +78,11 @@ VALIDACOES = [
         "dado": "zabbix",
         "valor": "ativado",
         "checks": [
-            {"arquivo": "/etc/zabbix/zabbix_agent2.conf", "tipo": "json_valor", "chave": "Server"},
+            # O conf do agente é INI, não JSON (#79): validado como "json_valor"
+            # devolvia json_invalido e a categoria nunca ficava ok. O tipo
+            # "texto" devolve a linha que casa com o padrão — mesmo princípio
+            # da categoria "wtmp" acima.
+            {"arquivo": "/etc/zabbix/zabbix_agent2.conf", "tipo": "texto", "padrao": "Server="},
         ]
     },
 ]

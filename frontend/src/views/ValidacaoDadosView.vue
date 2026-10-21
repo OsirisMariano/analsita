@@ -2,15 +2,21 @@
 import { reactive, onMounted } from 'vue'
 import { store } from '../store'
 import { Database, CheckCircle2, XCircle, Files, ChevronDown } from '@lucide/vue'
+import { useRefresh } from '@/composables/useRefresh'
 
 const aberto = reactive({})
 
-onMounted(async () => {
+const carregar = async () => {
   await store.carregarDadosValidacao()
   for (const v of store.dadosValidacao.validacoes || []) {
     aberto[v.dado] = false
   }
-})
+}
+
+onMounted(carregar)
+
+// Botão "Atualizar dados" do cabeçalho (#78)
+useRefresh(carregar)
 
 const alternar = (dado) => {
   aberto[dado] = !aberto[dado]
