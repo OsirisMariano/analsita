@@ -11,6 +11,7 @@ import threading
 import glob as glob_module
 import ipaddress
 import hmac
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from .arquivos_config import ARQUIVOS_CONFIG
 from .validacoes_config import VALIDACOES
@@ -50,17 +51,42 @@ _API_KEY = os.environ.get("API_KEY", "").strip()
 # exceto as isentas abaixo. Só vale quando _API_KEY está definida.
 Rotas_Isentas = {"/health", "/docs", "/openapi.json", "/redoc"}
 
+# #64: o preflight (OPTIONS) não carrega o header X-API-Key — o browser ainda
+# não enviou a requisição real. Exigir a chave nele produz 403 antes de a
+# requisição sair, e um header customizado SEMPRE dispara preflight. Ou seja:
+# o 403 no OPTIONS não é só ruído, é a razão de o painel não funcionar mesmo
+# com a chave correta.
+#
+# Isentar o método (e não a rota) é seguro: OPTIONS não executa nenhum
+# endpoint — é respondido pelo CORSMiddleware quando é preflight, e devolve
+# 405 quando não é (não existe rota OPTIONS). Nenhum dado de /stats,
+# /transacoes ou /arquivos escapa por ele. O que continua protegido é o GET,
+# que exige a chave normalmente.
+Metodos_Isentos = {"OPTIONS"}
+
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Opt-in (#63): sem chave configurada o middleware não exige nada.
-        # Isso também libera o preflight OPTIONS, que era justamente o segundo
-        # ponto de bloqueio do painel — ver #64 para o cenário com chave ativa.
         if not _API_KEY:
             return await call_next(request)
 
         if request.url.path in Rotas_Isentas:
+            return await call_next(request)
+
+        # #64: deixa o preflight passar para o CORSMiddleware responder.
+        #
+        # A ordem importa e é fácil de quebrar: `add_middleware` insere no
+        # INÍCIO da pilha, então o middleware registrado por último é o mais
+        # externo. O ApiKey foi registrado depois do CORS e por isso roda
+        # ANTES dele — interceptando o OPTIONS que o CORS deveria atender.
+        #
+        # A isenção abaixo é o que corrige, e ela não depende dessa ordem:
+        # mesmo que alguém reordene os `add_middleware` daqui, o preflight
+        # continua passando. NÃO remover achando que o CORSMiddleware já
+        # cuida disso — foi exatamente essa suposição que deixou o bug passar.
+        if request.method in Metodos_Isentos:
             return await call_next(request)
 
         chave = request.headers.get("X-API-Key")
@@ -112,6 +138,19 @@ def _carregar_equipamentos():
 EQUIPAMENTOS = _carregar_equipamentos()
 
 # 3. Funções Auxiliares
+def _abrir_banco_readonly():
+    """Abre o SQLite em modo somente-leitura (PRD §7, RNF "Acesso ao banco").
+
+    `mode=ro` na URI faz a restrição no próprio motor: qualquer escrita é
+    recusada com "attempt to write a readonly database", independente das
+    permissões do filesystem. O mount de ./data continua gravável de propósito
+    — o entrypoint.sh precisa criar o banco quando ele não existe. A garantia
+    de "a API não escreve" mora aqui, não no mount.
+    """
+    uri = Path(DB_PATH).resolve().as_uri() + "?mode=ro"
+    return sqlite3.connect(uri, uri=True)
+
+
 def disparar_ping(ip):
     try:
         # Portão de entrada (SEC-06): só executa subprocess se o input é
@@ -167,7 +206,7 @@ def listar_transacoes():
         raise HTTPException(status_code=404, detail="Banco de dados não encontrado")
     
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _abrir_banco_readonly()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM transacoes ORDER BY timestamp DESC")
@@ -204,7 +243,7 @@ def obter_resumo():
 
     if os.path.exists(DB_PATH):
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = _abrir_banco_readonly()
             conn.row_factory = sqlite3.Row # Essencial para transformar em dicionário
             cursor = conn.cursor()
             

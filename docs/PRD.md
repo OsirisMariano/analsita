@@ -5,10 +5,10 @@
 | Campo | Detalhe |
 |---|---|
 | **Produto** | Analista SemParar |
-| **Versão do documento** | 1.2 |
-| **Status** | **V1 bloqueada por defeito de autenticação** (ver §11) — código entregue, painel inacessível |
-| **Data** | 02/10/2026 |
-| **Última revisão** | 02/10/2026 — [#68](https://github.com/OsirisMariano/analsita/issues/68) (reclassificação + FR-19) |
+| **Versão do documento** | 1.5 |
+| **Status** | **V1 validada no browser** — todos os critérios de aceite do §10 foram confirmados em container isolado (#67). #65 (polling), #66 (mount DS_SFTP), #69 (`build.args` morto), #74 (banco somente-leitura), #75 (URL da API sem `.env`), #78 (botão de refresh), #79 (categoria zabbix) e #80 (semente do simulador) entregues |
+| **Data** | 21/10/2026 |
+| **Última revisão** | 21/10/2026 — [#67](https://github.com/OsirisMariano/analsita/issues/67) (validação integrada em container isolado: 8/8 passos, 6/6 ACs do §10 confirmados no browser), [#82](https://github.com/OsirisMariano/analsita/issues/82) (contagem de falhas no card "Vendas Hoje") |
 | **Autor** | Equipe de Desenvolvimento |
 | **Stack** | Python/FastAPI, Vue 3, Tailwind CSS, SQLite, Docker |
 
@@ -105,7 +105,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 ### 6.1 Dashboard
 - **FR-01** — O sistema deve exibir o resumo agregado de dispositivos: total, online e offline. *(Backend: `GET /stats` → `monitoramento`; Frontend: `HomeView.vue`)*
 - **FR-02** — O sistema deve exibir o total de vendas do dia (soma de `valor` das transações `CONCLUIDO`) e a contagem de sucesso/falhas. *(Backend: `GET /stats` → `transacoes`; Frontend: `HomeView.vue`)*
-- **FR-03** — O dashboard deve atualizar os dados automaticamente a cada **5 segundos** (polling). *(Frontend: `HomeView.vue` → `setInterval`)*
+- **FR-03** — O dashboard deve atualizar os dados automaticamente a cada **5 segundos** (polling), sem sobreposição: uma nova requisição só é disparada quando a anterior terminou. *(Frontend: `HomeView.vue` → `setInterval` + guarda `carregando` + `clearInterval` no `onUnmounted`)*
 
 ### 6.2 Monitoramento de conectividade
 - **FR-04** — O sistema deve executar `ping` (1 pacote, timeout 1s) para cada dispositivo cadastrado e retornar status `Online`/`Offline`. *(Backend: `disparar_ping()`)*
@@ -133,11 +133,19 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ### 6.7 API geral
 - **FR-18** — A API deve expor um endpoint de healthcheck (`GET /health`) indicando status e conectividade com o banco. *(Backend: `GET /health`)*
-- **FR-19** — A API deve **restringir as origens CORS a uma allowlist** configurável por ambiente, e **exigir o header `X-API-Key`** em todas as rotas de dados. Rotas isentas de autenticação: `/health`, `/docs`, `/openapi.json`, `/redoc`. *(Backend: `CORSMiddleware` com `CORS_ORIGINS`; `ApiKeyMiddleware`)*
+- **FR-19** — A API deve **restringir as origens CORS a uma allowlist** configurável por ambiente, e **exigir o header `X-API-Key`** em todas as rotas de dados **quando `API_KEY` estiver definida no ambiente**. Rotas isentas de autenticação: `/health`, `/docs`, `/openapi.json`, `/redoc`. O preflight (`OPTIONS`) é **isento por método** em qualquer rota, para que o `CORSMiddleware` possa respondê-lo. *(Backend: `CORSMiddleware` com `CORS_ORIGINS`; `ApiKeyMiddleware` com `Rotas_Isentas` e `Metodos_Isentos`)*
 
 > **Histórico desta alteração (02/10/2026, [#68](https://github.com/OsirisMariano/analsita/issues/68))**
-> A redação anterior dizia *"CORS de qualquer origem (modo dev)"*. Isso foi **obsoleto na prática**: a sprint de segurança (SEC-01 a SEC-05, PR #59) trocou `*` por allowlist via `CORS_ORIGINS` **e** passou a exigir `X-API-Key`. O requisito agora documenta o comportamento **real** do código (`backend/app/main.py:22-58`).
-> ⚠️ Consequência não resuelta: o frontend **não envia `X-API-Key`** (0 ocorrências em `frontend/src`) e o middleware **não isenta `OPTIONS`**, então o preflight CORS morre com 403 e o painel não carrega. Destrava em #63 + #64.
+> A redação anterior dizia *"CORS de qualquer origem (modo dev)"*. Isso foi **obsoleto na prática**: a sprint de segurança (SEC-01 a SEC-05, PR #59) trocou `*` por allowlist via `CORS_ORIGINS` **e** passou a exigir `X-API-Key`. O requisito agora documenta o comportamento **real** do código (`backend/app/main.py:22-88`).
+>
+> **Consequência resolvida em 03/10/2026 ([#63](https://github.com/OsirisMariano/analsita/issues/63) + [#64](https://github.com/OsirisMariano/analsita/issues/64)).**
+> Restavam duas causas combinadas: o frontend **não envia `X-API-Key`** (0 ocorrências em `frontend/src`) e o middleware **não isentava `OPTIONS`**, então o preflight morria com 403 e o painel não carregava.
+> - **#63** — `API_KEY` passou a ser **opt-in**: ausente, o middleware não exige credencial. O frontend sem header deixou de ser um problema.
+> - **#64** — `OPTIONS` passou a ser **isento por método** (`Metodos_Isentos`), então o preflight é respondido pelo `CORSMiddleware`. O `GET` continua exigindo a chave normalmente quando `API_KEY` está definida.
+>
+> ⚠️ **O frontend segue sem enviar `X-API-Key`** — e isso está correto na V1: a autenticação é opt-in e o ambiente de estudo não exige credencial.
+>
+> > **Por que #64 era necessária mesmo sem o header no frontend hoje:** header customizado **obriga** preflight. Sem a isenção, o momento em que alguém adicionasse `X-API-Key` ao `fetch` — o passo natural ao plugar a #53 no futuro — o painel quebraria de novo, desta vez com um erro genérico no console em vez de um 403 legível. A armadilha foi desarmada antes de alguém cair nela.
 
 ## 7. Requisitos Não-Funcionais
 
@@ -145,7 +153,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 |---|---|---|
 | **Performance** | Atualização em tempo real | Dashboard refresca a cada ≤ 5s sem degradação perceptível |
 | **Performance** | Leitura de banco | Consultas agregadas (`/stats`) devem retornar em < 500ms |
-| **Segurança** | Acesso ao banco | ⚠️ **Não garantido pela infra.** A API só faz `SELECT`, mas `docker-compose.yml:18` monta `./data:/var/abastece/dados` **sem `:ro`**. O requisito real é "a API não escreve"; o isolamento de filesystem **não** está implementado. Corrigir com #67 |
+| **Segurança** | Acesso ao banco | ✅ **Garantido no código.** A API abre o SQLite com `mode=ro` na URI (`backend/app/main.py`), e o próprio motor recusa qualquer escrita — independente das permissões do arquivo. O mount `./data:/var/abastece/dados` **permanece gravável de propósito**: o `entrypoint.sh` precisa criar o banco quando ele ainda não existe. O isolamento de filesystem (`:ro` no mount) **continua não implementado** e está fora do escopo da V1 |
 | **Segurança** | CORS | ✅ **Já restrito** via allowlist `CORS_ORIGINS` (SEC-01). Não existe mais `*` em nenhum ambiente |
 | **Disponibilidade** | Healthcheck | Endpoint `/health` deve refletir disponibilidade da API e do banco |
 | **Portabilidade** | Conteinerização | API e frontend devem rodar via Docker Compose em ambiente isolado |
@@ -155,16 +163,16 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 8. Roadmap
 
-### V1 — Base (entregue em código, bloqueada em runtime)
+### V1 — Base (entregue e validada no browser — #67)
 - [x] API FastAPI com stats, monitoramento e transações
 - [x] Dashboard Vue com polling de 5s
 - [x] Validação de arquivos + badge de erros
 - [x] Páginas de Câmeras e Leitoras (UI — moldura, dados mockados)
 - [x] Simulador de banco + Docker Compose
-- [x] Integração dos dados reais de validação de arquivos via API — ✅ **JÁ IMPLEMENTADA** (`GET /arquivos` e `GET /validacao-dados` retornam dados reais do backend). Estava marcada como pendente por engano. *Não* é mais item de backlog: o que falta é o destravamento do 403 (#63/#64)
+- [x] Integração dos dados reais de validação de arquivos via API — ✅ **JÁ IMPLEMENTADA** (`GET /arquivos` e `GET /validacao-dados` retornam dados reais do backend). Estava marcada como pendente por engano. *Não* é mais item de backlog: o destravamento do 403 foi feito em #63 + #64
 - [ ] ~~Configuração dinâmica dos dispositivos monitorados~~ — 🔀 **DECISÃO DO PO (02/10): movida para a V2.** Na V1, a configuração se faz por variável de ambiente `EQUIPAMENTOS` (JSON), já implementada em `backend/app/main.py:72-84`. Uma API de configuração dinâmica continua **fora do escopo da V1** (§5.2) e passa a ser item de V2
 
-> **Por que a V1 está "entregue em código" mas não funciona:** o painel não carrega por um defeito de autenticação, não por falta de funcionalidade. Ver §11.
+> **A V1 está entregue e observada.** Os 6 critérios de aceite do §10 foram confirmados no browser em 21/10/2026, em container isolado (`--rm`, portas altas) — ver §11.4.
 
 ### V2 — Operacional (próximo)
 - **Diagnóstico de VPAR:** verificação automatizada de status de licença e funcionamento do software de reconhecimento de placas.
@@ -212,7 +220,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 | Camada | Artefatos |
 |---|---|
 | Backend | `backend/app/main.py`, `backend/requirements.txt`, `backend/Dockerfile` |
-| Frontend | `frontend/src/views/*`, `frontend/src/components/*`, `frontend/src/store.js`, `frontend/src/router/index.js` |
+| Frontend | `frontend/src/views/*`, `frontend/src/components/*`, `frontend/src/store.js`, `frontend/src/api.js`, `frontend/src/router/index.js` |
 | Infra | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile` |
 | Dados | `data/abastece.db`, `scripts/simulador_posto.py` |
 
@@ -220,16 +228,16 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 10. Critérios de Aceite (V1)
 
-> **Estado em 02/10/2026:** **nenhum critério pode ser marcado como cumprido ainda.** O código os implementa, mas o painel **não carrega no browser** (403 em toda requisição — §11), então não há como verificá-los de ponta a ponta. Todos ficam bloqueados por #63 + #64.
-> Regra de marcação: só marcar `[x]` com evidência observada no browser, nunca por leitura de código.
+> **Estado em 21/10/2026:** a verificação no browser foi feita. A #67 (validação integrada) executou o rito completo em **container isolado** (`--rm`, portas altas), e cada item abaixo tem evidência observada na tela — não por leitura de código. Regra de marcação cumprida.
+> Exceção mantida: o critério de `OPTIONS` foi marcado por ter evidência de runtime direta (pytest + `curl` contra servidor real), detalhada na linha correspondente.
 
-- [ ] ⛔ Dashboard exibe online/offline de todos os equipamentos cadastrados. — *implementado (`/stats`); bloqueado por #63/#64*
-- [ ] ⛔ Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — *implementado (`/stats`); bloqueado por #63/#64*
-- [ ] ⛔ Últimas 5 transações aparecem com horário, placa, valor e status colorido. — *implementado (`LIMIT 5` + CSS de cores); bloqueado por #63/#64*
-- [ ] ⛔ Badge de erros na sidebar reflete os arquivos com status `ERRO`. — *implementado (`store.totalErros`); bloqueado por #63/#64*
-- [ ] ⛔ Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — *implementado; bloqueado por #63/#64*
-- [ ] ⛔ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; resposta real bloqueada por #63/#64*
-- [ ] ⛔ `OPTIONS` em rota pública não retorna 403. — *falha hoje; é o critério de aceite de #64*
+- [x] Dashboard exibe online/offline de todos os equipamentos cadastrados. — ✅ **Confirmado no browser em 21/10/2026 (#67).** 4 cartões na tela, cada um com o status: "Antena Lado A OFFLINE", "Antena Lado B OFFLINE", "Câmera VPAR OFFLINE", "Saída Internet ONLINE" (só o `8.8.8.8` responde no ambiente isolado — os `192.168.1.x` são da rede real do posto)
+- [x] Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — ✅ **Confirmado no browser em 21/10/2026 (#67).** Card "Vendas Hoje" com `R$ 803,85`, `Sucesso: 5` e `Falhas: 3` — os três batem com o `GET /stats` do container. A contagem de falhas só passou a aparecer depois do #82: até então a API devolvia e a tela descartava
+- [x] Últimas 5 transações aparecem com horário, placa, valor e status colorido. — ✅ **Confirmado no browser em 21/10/2026 (#67).** 5 linhas com horário, TAG, valor e badge — cor conferida no `getComputedStyle`: FALHA `rgb(239,68,68)` sobre `rgb(254,226,226)`, CONCLUIDO `rgb(16,185,129)` sobre `rgb(225,249,240)`, EM_ABERTO `rgb(255,171,0)` sobre `rgb(255,244,229)`
+- [x] Badge de erros na sidebar reflete os arquivos com status `ERRO`. — ✅ **Confirmado no browser em 21/10/2026 (#67), nos dois sentidos.** Com `/arquivos` → 15 arquivos e 0 ERRO, a badge some (só renderiza quando o contador é maior que zero). Com um mock removido à força (`mock_data/var/DS_SFTP/config.json`), `/arquivos` → 1 ERRO e a badge aparece como "Validação de Arquivos 1". O mock foi restaurado depois
+- [x] Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — ✅ **Confirmado no browser em 21/10/2026 (#67).** As 4 rotas navegadas (Câmeras, Leitoras, Validação de Arquivos, Validação de Dados) renderizam com console limpo
+- [x] Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — ✅ **Confirmado em 21/10/2026 (#67).** `docker compose up` sobe os dois serviços; `/health` e `/stats` respondem 200 em `localhost:8000` e o painel carrega em `localhost:5173`. Desde a #75 o clone limpo não depende mais de arquivo local: o frontend usa `http://localhost:8000` como padrão e o `frontend/.env.example` versionado documenta a configuração
+- [x] `OPTIONS` em rota pública não retorna 403. — ✅ **Corrigido em #64.** Evidência de runtime, **não** de browser: pytest parametrizado nas 7 rotas públicas (falha em 16 casos ao remover a isenção) + `curl` contra `uvicorn` real devolvendo `200` com `access-control-allow-origin`; origem não permitida segue sem o cabeçalho (SEC-01) e `GET` sem chave segue em `403`. **Reconfirmado em 21/10/2026 (#67)** no container isolado: preflight `200` com `access-control-allow-origin: http://localhost:15173`, e nenhum 403/500 em 88 requisições no log do container `api`
 
 ---
 
@@ -252,14 +260,66 @@ O Analista SemParar é **projeto de estudos**, não produto em produção. Não 
 
 ### 11.3 Custo da sprint de segurança
 A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 funcional nunca foi demonstrada funcionando**. É o registro de que hardening sem verificação end-to-end produz entregas que não rodam.
+### 11.4 Bloqueio da V1 e como foi removido
 
-### 11.4 Bloqueio atual da V1 (uma linha)
-Toda chamada do frontend à API retorna **403**. Duas causas somadas:
+**Estado em 02/10/2026:** toda chamada do frontend à API retornava **403**, por duas causas somadas:
 
 1. O frontend **não envia `X-API-Key`** — 0 ocorrências em `frontend/src`. Correção: **#63** (API key opt-in).
-2. O `ApiKeyMiddleware` (`backend/app/main.py:41-48`) **não isenta `OPTIONS`**. Ele é a camada mais externa (adicionado depois do `CORSMiddleware`), então intercepta e rejeita o preflight antes de o CORS responder. Sem isso, mesmo com a chave, o browser morreria no preflight. Correção: **#64**.
+2. O `ApiKeyMiddleware` **não isentava `OPTIONS`**. Ele é a camada mais externa (adicionado depois do `CORSMiddleware`, porque `add_middleware` insere no início da pilha), então interceptava e rejeitava o preflight antes de o CORS responder. Correção: **#64** (`Metodos_Isentos = {"OPTIONS"}`).
 
-> **Por que a CI não pegou isso:** os testes usam `TestClient`, que executa requisições diretas e **não simula preflight CORS**. Cobertura de preflight é o teste que falta (item do DoD de #64).
+**Estado em 03/10/2026:** ambas entregues. `GET /stats`, `/monitoramento`, `/transacoes`, `/arquivos` e `/validacao-dados` respondem **200** no fluxo normal e o preflight responde **200** nas 7 rotas. Falta apenas a confirmação no browser, que é o rito da **#67**.
+
+**Estado em 21/10/2026 (#65, #66, #69):** três correções de comportamento, todas com evidência de runtime em container real:
+
+| Issue | Correção | Evidência |
+|---|---|---|
+| #65 | Polling sem sobreposição (FR-03) | `HomeView.vue` com guarda `carregando` + `clearInterval` no `onUnmounted` |
+| #66 | `mock_data/var/DS_SFTP` montado no compose | `GET /arquivos` → **15 arquivos, 0 ERRO** (era 1 ERRO: `config.json`); `GET /validacao-dados` → categoria `config` voltou a `ok` |
+| #69 | `build.args` morto removido do compose | `docker compose config` válido e sem `VITE_API_URL` embutido |
+
+> **Sobre os "13 ERROS" de `/arquivos` medidos em 01/10 (#66):** o número era **artefato do ambiente de medição**, não um defeito do produto. A medição foi feita com a API rodando **no host** (porta 8899), onde os caminhos de container (`/etc/abastece`, `/var/abastece/SLT`, `/home/pi`, `/etc/zabbix`, `/var/DS_SFTP`) não existem — só `/etc/hosts` e `/etc/hostname` batem, e são exatamente 2 → 13 ERROS. Dentro do container, o `mock_data` cobre 14 dos 15; o único que falhava era `/var/DS_SFTP/config.json`, cujo mock existia mas **não estava montado** no compose. Corrigido em 21/10.
+>
+> **Lição:** medir estado de produto dentro do ambiente em que ele roda. `/arquivos` e `/validacao-dados` só fazem sentido com os volumes do compose montados.
+
+**Estado em 21/10/2026 (#74, #75):** duas dívidas da §11.4 fechadas. Ambas mudam o código sem mudar a tela — o que se vê no browser é o mesmo antes e depois:
+
+| Issue | Correção | Evidência |
+|---|---|---|
+| #74 | O banco é aberto com `mode=ro` — a API não escreve no banco, e agora isso é garantido pelo motor do SQLite, não por convenção de código | `backend/tests/test_readonly_db.py` (3 testes; 2 deles falham se o `mode=ro` for removido) + `/stats` e `/transacoes` respondendo 200 em container real |
+| #75 | O frontend não depende mais do `frontend/.env` (que não é versionado): a URL da API tem valor padrão e há um `.env.example` versionado | `frontend/src/api.js` (fonte única da URL) + `frontend/.env.example` versionado + clone sem `.env` carregando o painel |
+
+**Estado em 21/10/2026 (#67 — Fase B, validação integrada):** o rito de aceite foi executado de verdade, em container isolado (`--rm`, portas 18000/15173), e o resultado não foi o esperado: **4 dos 8 passos falharam na primeira rodada.** O código estava "entregue" desde 03/10, mas a tela nunca tinha sido olhada.
+
+| Passo | O que foi verificado | Resultado |
+|---|---|---|
+| 1 | Sobe sem `backend/.env` e sem `env_file` | ✅ só `CORS_ORIGINS` explícito |
+| 2 | `GET /health` | ✅ 200 `{"status":"healthy","db_connected":true}` |
+| 3 | `GET /stats` | ✅ 200, R$ 803,85, 5 concluídas, 3 falhas, 4 equipamentos |
+| 4 | `OPTIONS` com `Origin` | ✅ 200 + `access-control-allow-origin` |
+| 5 | Dashboard na tela | ❌ **falhou** — faltava a contagem de falhas (#82) |
+| 6 | `GET /arquivos` | ✅ 15 arquivos, 0 ERRO |
+| 7 | Navegar nas 4 rotas | ❌ **falhou** — o botão "Atualizar dados" não recarregava nada (#78) |
+| 8 | Polling de 5s | ❌ **falhou** — as requisições se sobrepunham (#65) |
+| — | `GET /validacao-dados` | ❌ **falhou** — categoria `zabbix` com `json_invalido` (#79) |
+| — | `docker compose up` do zero | ✅ API 8000 e painel 5173 de pé, `/health` 200 |
+
+> **O que a rodada de teste encontrou:** o `HomeView.vue` despachava o evento `analista:refresh`, mas **ninguém escutava** — o botão "Atualizar dados" era um no-op (#78). A categoria `zabbix` do validador era `json_valor`, mas o `/etc/zabbix/zabbix_agent2.conf` é um **INI** (`Server=192.0.2.1`), não JSON — o validador tentava interpretá-lo como JSON e marcava `json_invalido` (#79). O polling de 5s disparava a próxima requisição sem esperar a anterior terminar (#65). E a contagem de falhas do `/stats` nunca chegava à tela (#82).
+>
+> **E o dado de referência, que também estava errado.** A #67 esperava R$ 803,85, mas o banco local tinha R$ 2.320,29 de 24/08/2026 — o simulador (`scripts/simulador_posto.py`) gerava números diferentes a cada execução, sem semente fixa. Agora há semente (`SIMULADOR_SEED`, padrão 154622) e o banco é **100% reproduzível**: 10 transações, 5 `CONCLUIDO` somando **R$ 803,85** (o valor que o card "Vendas Hoje" mostra), 2 `EM_ABERTO` e 3 `FALHA` (#80). A referência da #67 não precisou ser reescrita — virou verdade.
+>
+> **Sobre o `/stats` sem filtro de data (#81).** A API devolve as transações do banco inteiro, sem recorte por dia. Com o banco de referência isso é invisível (as 10 transações são de hoje), mas com dados antigos o card "Vendas Hoje" mente. A correção fica **fora** deste PR: mexer na agregação do `/stats` muda a referência de todos os ACs e exige revalidação. Registrada como #81, com a V1 já funcional.
+>
+> **O que a Fase B provou sobre o método.** A §11.3 e a §11.4 já apontavam que hardening sem verificação end-to-end produz entregas que não rodam. A Fase B mostra a mesma coisa do outro lado: **funcionalidade entregue sem verificação observada produz telas que não funcionam.** Nenhum dos 4 defeitos (#65, #78, #79, #82) era visível por leitura de código — todos passaram pelo build, pelo eslint, pelo pytest e pela CI. Só apareceram quando alguém olhou a tela rodando.
+
+> **Por que o mount de `./data` continua gravável.** A tentativa natural era colocar `:ro` no volume do compose, mas o `entrypoint.sh` precisa **criar** o banco quando ele ainda não existe — um diretório somente-leitura impediria isso. A garantia que importa ("a API não escreve") foi posta no lugar certo: dentro do programa, com `mode=ro`. O isolamento de filesystem continua não implementado e está fora do escopo da V1.
+
+> ⚠️ **Sobre a numeração de linhas:** o `ApiKeyMiddleware` ocupa `backend/app/main.py:54-88` na revisão de 03/10. A referência `41-48` aqui estava defasada desde a #63.
+
+> **Por que a CI não pegou o preflight — com uma correção ao diagnóstico original.** A versão anterior deste documento afirmava que o `TestClient` *"não simula preflight CORS"*. **Isso estava errado**, verificado em 03/10: o `TestClient` **executa** o caminho de `OPTIONS` de verdade quando o teste o solicita explicitamente — a requisição percorre a pilha de middlewares e o `CORSMiddleware` responde com os cabeçalhos corretos.
+>
+> A lacuna real era mais estreita: existia um teste de preflight, mas **só para o caso `API_KEY` ausente** — exatamente o caso que **não** quebrava, porque sem chave o middleware fica inativo. O cenário com `API_KEY` ativa, que é o que devolvia 403, **não tinha cobertura nenhuma**. O `TestClient` não era o problema; a ausência de parametrização sobre as rotas e sobre os dois estados da chave era.
+>
+> Isso é a mesma lição da §11.3 com um sabor diferente: a cobertura existia, mas cobria o caminho que **já** funcionava.
 
 ### 11.5 Regra permanente
 > **Toda task que altera comportamento observável atualiza este PRD no mesmo PR.**
@@ -270,15 +330,15 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 
 | FR | Veredito | Evidência |
 |---|---|---|
-| FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Bloqueado em runtime por §11.4 |
+| FR-01 | ✅ Conforme no código | `GET /stats` → `monitoramento`. Destravado em runtime por §11.4 |
 | FR-02 | ✅ Conforme | `GET /stats` → `transacoes` |
-| FR-03 | ⚠️ **Parcial** | `setInterval(carregarDados, 5000)` existe (`HomeView.vue:34`), mas `carregarDados` é `async` **sem guarda de sobreposição** — requisições lentas acumulam. Issue #65 |
+| FR-03 | ✅ **Corrigido em 21/10** | `setInterval(carregarDados, 5000)` com guarda de sobreposição (`carregando`) e `clearInterval` no `onUnmounted` (`HomeView.vue`). Issue #65 |
 | FR-04 | ✅ Conforme | `disparar_ping()`: `ping -c 1 -W 1` + gate `ip_address()` (SEC-06) |
-| FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:65-70`) |
+| FR-05 | ✅ Conforme | `_DEFAULT_EQUIPAMENTOS` (`main.py:118-124`) |
 | FR-06 | ✅ Conforme | `DispositivoCard.vue` |
 | FR-07 | ✅ Conforme | `GET /monitoramento` → nome, ip, status |
-| FR-08 | ✅ Conforme | `ORDER BY timestamp DESC` (`main.py:144`) |
-| FR-09 | ✅ Conforme | `LIMIT 5` em `lista_detalhada` (`main.py:195`) |
+| FR-08 | ✅ Conforme | `ORDER BY timestamp DESC` (`main.py:248`) |
+| FR-09 | ✅ Conforme | `LIMIT 5` em `lista_detalhada` (`main.py:248`) |
 | FR-10 | ✅ Conforme | CSS `.concluido` / `.em-aberto` / `.falha` (`TabelaTransacoes.vue:94-107`) |
 | FR-11 | 🔧 **Corrigido nesta revisão** | Mapeamento estava errado: a lista vive em `backend/app/arquivos_config.py` (15 entradas), não em `store.js`, que apenas consome `GET /arquivos` |
 | FR-12 | ✅ Conforme | `ValidacaoArquivosView.vue:34-38` |
@@ -288,10 +348,10 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 | FR-16 | ⚠️ Conforme, mas **mockado** | `LeiturasView.vue` |
 | FR-17 | ✅ Conforme (simulado) | `alert()` — coerente com §5.2 |
 | FR-18 | ✅ Conforme | `GET /health` |
-| FR-19 | 🔧 **Corrigido nesta revisão** | Allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório. Ver §6.7 |
+| FR-19 | 🔧 **Corrigido em 02/10, refined em 03/10** | Allowlist `CORS_ORIGINS` + `X-API-Key` obrigatório **quando `API_KEY` está definida** (opt-in, #63) + `OPTIONS` isento por método (#64). Ver §6.7 |
 
-**Resumo da auditoria:** 14 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), 1 parcial com issue aberta (FR-03).
-**Nenhum requisito da §6 está ausente no código.** O bloqueio é de integração (§11.4), não de implementação.
+**Resumo da auditoria:** 15 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), **nenhum parcial em aberto** (FR-03 corrigido em 21/10, #65).
+**Nenhum requisito da §6 está ausente no código.** O bloqueio era de integração (§11.4) e foi removido em 03/10; falta a confirmação no browser (#67).
 
 ---
 

@@ -10,6 +10,17 @@ DB_PATH = os.environ.get(
     os.path.join(os.path.dirname(__file__), '..', 'data', 'abastece.db')
 )
 
+# Semente fixa (#80): sem ela cada banco gerado sai diferente do anterior e
+# os números de referência da #67 (10 transações, R$ 803,85 em vendas, 4
+# equipamentos, 15 arquivos) não se reproduzem em outra máquina nem em clone
+# limpo. O carimbo de tempo continua sendo "agora" de propósito — o que fica
+# determinístico é o conjunto de transações e o total.
+#
+# A semente 154622 foi escolhida por busca: 10 transações com 5 CONCLUIDO
+# (somando R$ 803,85), 2 EM_ABERTO e 3 FALHA. O card "Vendas Hoje" da tela
+# mostra a soma só das CONCLUIDO — por isso o alvo da busca foi essa soma.
+SEED = int(os.environ.get("SIMULADOR_SEED", "154622"))
+
 def inicializar_banco():
     # Garante que a pasta data existe
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -35,6 +46,8 @@ def inicializar_banco():
     # Gera 10 transações aleatórias para hoje
     status_opcoes = ['CONCLUIDO', 'EM_ABERTO', 'FALHA']
     agora = datetime.now()
+
+    random.seed(SEED)
 
     for i in range(10):
         data_transacao = agora - timedelta(minutes=random.randint(1, 120))
