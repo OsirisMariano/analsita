@@ -1,6 +1,5 @@
 import { reactive, computed } from 'vue'
-
-const API_URL = import.meta.env.VITE_API_URL
+import { API_URL } from '@/api'
 
 export const store = reactive({
   arquivos: [],

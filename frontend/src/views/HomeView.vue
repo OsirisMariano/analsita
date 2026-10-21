@@ -1,18 +1,31 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import DispositivoCard from '../components/DispositivoCard.vue'
 import TabelaTransacoes from '../components/TabelaTransacoes.vue' // Novo Import
+import { API_URL } from '@/api'
 
 const resumo = ref(null)
 const dispositivos = ref([])
 const ultimasTransacoes = ref([]) // Nova variável de estado
 
+// #65 (FR-03): o setInterval dispara a cada 5s independentemente de a
+// requisição anterior ter terminado. Se a API demorar mais que 5s (ping dos
+// 4 dispositivos, disco lento, DB grande), as chamadas se empilham.
+// A guarda abaixo faz a próxima requisição só sair quando a anterior
+// terminou — o intervalo de 5s continua valendo no caso normal.
+const carregando = ref(false)
+let intervalo = null
+
 const carregarDados = async () => {
+  // Requisição em voo: não empilha outra por cima.
+  if (carregando.value) return
+  carregando.value = true
+
   try {
     // Busca resumo/stats e monitoramento em paralelo
     const [resStats, resMonit] = await Promise.all([
-      fetch(`${import.meta.env.VITE_API_URL}/stats`),
-      fetch(`${import.meta.env.VITE_API_URL}/monitoramento`)
+      fetch(`${API_URL}/stats`),
+      fetch(`${API_URL}/monitoramento`)
     ])
 
     const dataStats = await resStats.json()
@@ -26,12 +39,20 @@ const carregarDados = async () => {
 
   } catch (error) {
     console.error("Erro ao integrar com API:", error)
+  } finally {
+    // Libera a guarda mesmo em caso de erro — senão o polling trava para sempre.
+    carregando.value = false
   }
 }
 
 onMounted(() => {
   carregarDados()
-  setInterval(carregarDados, 5000)
+  intervalo = setInterval(carregarDados, 5000)
+})
+
+onUnmounted(() => {
+  // Sem isso o timer vaza a cada troca de rota.
+  if (intervalo) clearInterval(intervalo)
 })
 </script>
 
