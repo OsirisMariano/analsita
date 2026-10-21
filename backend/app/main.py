@@ -11,6 +11,7 @@ import threading
 import glob as glob_module
 import ipaddress
 import hmac
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from .arquivos_config import ARQUIVOS_CONFIG
 from .validacoes_config import VALIDACOES
@@ -137,6 +138,19 @@ def _carregar_equipamentos():
 EQUIPAMENTOS = _carregar_equipamentos()
 
 # 3. Funções Auxiliares
+def _abrir_banco_readonly():
+    """Abre o SQLite em modo somente-leitura (PRD §7, RNF "Acesso ao banco").
+
+    `mode=ro` na URI faz a restrição no próprio motor: qualquer escrita é
+    recusada com "attempt to write a readonly database", independente das
+    permissões do filesystem. O mount de ./data continua gravável de propósito
+    — o entrypoint.sh precisa criar o banco quando ele não existe. A garantia
+    de "a API não escreve" mora aqui, não no mount.
+    """
+    uri = Path(DB_PATH).resolve().as_uri() + "?mode=ro"
+    return sqlite3.connect(uri, uri=True)
+
+
 def disparar_ping(ip):
     try:
         # Portão de entrada (SEC-06): só executa subprocess se o input é
@@ -192,7 +206,7 @@ def listar_transacoes():
         raise HTTPException(status_code=404, detail="Banco de dados não encontrado")
     
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _abrir_banco_readonly()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM transacoes ORDER BY timestamp DESC")
@@ -229,7 +243,7 @@ def obter_resumo():
 
     if os.path.exists(DB_PATH):
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = _abrir_banco_readonly()
             conn.row_factory = sqlite3.Row # Essencial para transformar em dicionário
             cursor = conn.cursor()
             

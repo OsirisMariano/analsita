@@ -153,7 +153,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 |---|---|---|
 | **Performance** | Atualização em tempo real | Dashboard refresca a cada ≤ 5s sem degradação perceptível |
 | **Performance** | Leitura de banco | Consultas agregadas (`/stats`) devem retornar em < 500ms |
-| **Segurança** | Acesso ao banco | ⚠️ **Não garantido pela infra.** A API só faz `SELECT`, mas `docker-compose.yml:18` monta `./data:/var/abastece/dados` **sem `:ro`**. O requisito real é "a API não escreve"; o isolamento de filesystem **não** está implementado. Corrigir com #67 |
+| **Segurança** | Acesso ao banco | ✅ **Garantido no código.** A API abre o SQLite com `mode=ro` na URI (`backend/app/main.py`), e o próprio motor recusa qualquer escrita — independente das permissões do arquivo. O mount `./data:/var/abastece/dados` **permanece gravável de propósito**: o `entrypoint.sh` precisa criar o banco quando ele ainda não existe. O isolamento de filesystem (`:ro` no mount) **continua não implementado** e está fora do escopo da V1 |
 | **Segurança** | CORS | ✅ **Já restrito** via allowlist `CORS_ORIGINS` (SEC-01). Não existe mais `*` em nenhum ambiente |
 | **Disponibilidade** | Healthcheck | Endpoint `/health` deve refletir disponibilidade da API e do banco |
 | **Portabilidade** | Conteinerização | API e frontend devem rodar via Docker Compose em ambiente isolado |
