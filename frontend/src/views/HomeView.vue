@@ -74,6 +74,10 @@ useRefresh(carregarDados)
         <h3>Vendas Hoje</h3>
         <p class="valor">R$ {{ resumo.transacoes.valor_total }}</p>
         <p>Sucesso: {{ resumo.transacoes.concluidas }}</p>
+        <!-- A API devolve a contagem de falhas, mas ela não aparecia na
+             tela (#82): o operador via quanto vendeu e quantas deram certo,
+             mas nunca quantas falharam. -->
+        <p class="falha">Falhas: {{ resumo.transacoes.falhas }}</p>
       </div>
     </div>
 
@@ -112,6 +116,7 @@ h2, h3 .section-title {
 
 .online { color: #00bd7e; font-weight: bold; }
 .offline { color: #ff5252; font-weight: bold; }
+.falha { color: #ff5252; font-weight: bold; }
 .valor { font-size: 24px; color: #ffd700; }
 
 .section-title {
