@@ -64,7 +64,18 @@ O teste foi rodado **com a correção removida** (`sqlite3.connect(DB_PATH)` sem
 - `scripts/simulador_posto.py` é **aleatório** → os números de referência da #67 não se reproduzem em clone limpo. Fix proposto: `random.seed()` fixo.
 - Categoria `zabbix` em `validacoes_config.py:81` (preexistente) — o PO decidiu **abrir issue e corrigir junto**; ainda não feito.
 - **Fase B da #67** (latência induzida para provar o #65, e grep do bundle para provar o #69).
-- **Push e PR** das duas branches — nada foi enviado ao remoto.
+
+### Publicação no GitHub (21/10, fim do dia)
+- **PR #76** → `develop`, **mergeado** (`be6a8ee`). As duas branches foram empilhadas e subiram juntas, num PR só.
+- CI do PR: **Backend CI, Frontend CI e build das imagens — todos verdes**.
+- Issues **#65, #66, #68 e #69 fechadas** com o comentário da prova. A **#64** também foi fechada agora: a entrega era de 03/10 (PR #73) e só faltava o registro. A **#67** fica aberta — é a Fase A (browser) e a Fase B.
+- #74 e #75 criadas, fechadas e **colocadas no board #70**.
+- Board #70 atualizado: #63, #64, #65, #66, #68, #69, #74, #75 em **✅ DONE**; #62 (épico) em **🔨 IN PROGRESS**; #67 em **📥 TO DO**; backlog de segurança (#51–#55) intacto em **📋 BACKLOG**.
+- Issues do É7 com **responsável** (`OsirisMariano`) e **milestone É7** preenchidos.
+
+> **Gotcha:** o fechamento automático por PR **não funcionou** neste repositório. As linhas `Closes #65`…`Closes #75` estão no corpo do PR e o GitHub cria a referência cruzada (aparece no histórico de cada issue), mas o `closingIssuesReferences` fica vazio — testei com uma issue nova e descartável e o resultado foi o mesmo. As issues foram fechadas **manualmente**, com `gh issue close` e o comentário da prova, que é o que já se fazia com a #63, a #74 e a #75. **Não confiar no fechamento automático ao fechar a #67.**
+
+> **Outro gotcha:** o `gh issue create --label "epico-7"` falha — o rótulo não existe. Os rótulos em uso no É7 são `frontend`, `backend`, `infra/docker`, `epic`, `security`, `bug`, `documentation`.
 
 ---
 
