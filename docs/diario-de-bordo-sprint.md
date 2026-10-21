@@ -88,6 +88,16 @@ O mesmo método foi usado na #69: três builds da mesma imagem (`--build-arg`, `
 - Branch `feature/epico7-fase-b-validacao-integrada` com 4 commits de correção (nenhum empurrado ainda)
 - É7 fechado: #67 e #62 encerradas, #78/#79/#80/#82 delivered junto do PR
 
+### Publicação
+
+- **PR #83** (`feature/epico7-fase-b-validacao-integrada` → `develop`) mergeado em 21/10 — CI verde nos 3 jobs (backend, frontend, build das imagens)
+- **PR #84** (release `develop` → `main`) mergeado em 21/10 — `main` e `develop` com conteúdo idêntico (16 arquivos, +811/−56)
+- Issues fechadas à mão (o fechamento automático por PR não é indexado neste repositório): #67, #62, #78, #79, #80, #82
+- Board #70 sincronizado: #62, #67, #78, #79, #80, #82 e o PR #83 em `✅ DONE`; **#81 em `📋 BACKLOG`**
+- Branch deletada (local e remota); containers isolados derrubados
+
+> O release foi mergeado com **squash** (`932f89a`), enquanto o release anterior (#72) tinha sido merge commit. O conteúdo é o mesmo; a diferença é só no grafo do histórico. Para o próximo release, manter o **merge commit**, que preserva os commits individuais — é o padrão dos PRs de feature do repositório.
+
 ---
 
 ## 🗓️ Quarta, 21/10 (tarde) — Bloco 2 do É7: #74 e #75 entregues
