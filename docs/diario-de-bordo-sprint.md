@@ -5,7 +5,94 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite) — Fase B do É7: #67 fechada no browser (8/8 passos, 6/6 ACs)
+
+> A V1 estava "entregue em código" desde 03/10 — e nunca tinha sido olhada. Esta fase pegou o projeto inteiro, montou do zero em container isolado e executou o rito de aceite de verdade. Resultado: **4 dos 8 passos falharam na primeira rodada.** Todos os defeitos passaram pelo build, pelo eslint, pelo pytest e pela CI.
+
+### Entregue (4 correções + a validação)
+
+| Issue | O que era | Correção |
+|---|---|---|
+| [#78](https://github.com/OsirisMariano/analsita/issues/78) | O botão "Atualizar dados" era um **no-op** | `frontend/src/composables/useRefresh.js` — o evento `analista:refresh` era despachado por `App.vue` e **ninguém escutava** |
+| [#79](https://github.com/OsirisMariano/analsita/issues/79) | Categoria `zabbix` sempre com `json_invalido` | O conf do zabbix é um **INI** (`Server=192.0.2.1`), não JSON → a categoria virou `{"tipo": "texto", "padrao": "Server="}` |
+| [#80](https://github.com/OsirisMariano/analsita/issues/80) | O banco de referência mudava a cada execução | `SIMULADOR_SEED` (padrão **154622**) + `random.seed()` → 100% reproduzível |
+| [#82](https://github.com/OsirisMariano/analsita/issues/82) | A contagem de **falhas** nunca chegava à tela | O `/stats` devolvia `falhas: 3` e o `frontend/src` não tinha **nenhuma** ocorrência da palavra → faltava a linha no card "Vendas Hoje" |
+
+### O dado de referência também estava errado
+
+A #67 esperava **R$ 803,85**. O banco local tinha **R$ 2.320,29** de 24/08/2026 — o simulador gerava números diferentes a cada execução, sem semente. Com `SIMULADOR_SEED=154622`:
+
+- 10 transações: **5 `CONCLUIDO`** somando **R$ 803,85** (é o que o card "Vendas Hoje" mostra), 2 `EM_ABERTO`, 3 `FALHA`
+- Total das 10 (contando as 3 falhas): R$ 1.792,81
+
+A referência da #67 **não precisou ser reescrita** — virou verdade. E o banco local foi destruído de propósito (backup em `/tmp/opencode/abastece.db.bak`), com consentimento explícito.
+
+### Validação (container isolado + browser)
+
+| Gate | Resultado |
+|---|---|
+| `pytest backend/tests` | **57 passed** (53 + 4 de regressão do zabbix) |
+| `flake8 backend --select=E9,F63,F7,F82` | **0** |
+| `eslint frontend/src` | **0** |
+| `npm run build` (dentro da imagem) | ✓ built (1830 modules) |
+| **8 passos do rito da #67** | **8/8 ✅** (health, stats, OPTIONS, dashboard, arquivos, navegação, polling, `docker compose up`) |
+| Log do container `api` | **88 requisições, todas 200** — nenhum 403, nenhum 500 |
+| Console do browser | limpo (só mensagens de debug do Vite) |
+| Polling de 5s | 3 ciclos em 13,2 s (2,7 / 7,7 / 12,7 s), todos 200 |
+| Badge de erros | provada **nos dois sentidos**: 0 ERRO → badge some; 1 ERRO (mock removido à força) → "Validação de Arquivos 1" |
+| Cor do status | conferida no `getComputedStyle`: FALHA `rgb(239,68,68)`, CONCLUIDO `rgb(16,185,129)`, EM_ABERTO `rgb(255,171,0)` |
+
+### Como se prova que a correção do polling funciona
+
+Rodar o código bom e ver que ele funciona **não prova nada** — a falha original era justamente o código "bonito" que não funcionava. Então o teste rodou **duas vezes**:
+
+| Cenário | Ciclos | Intervalos | Sobreposições |
+|---|---|---|---|
+| Com a guarda `carregando` | 5 | 10,1 / 10 / 10 / 10 s | **0** → `SEM SOBREPOSICAO` |
+| Sem a guarda (comentada na hora) | 7 | 5 s × 6 | **5** → `SOBREPOSTO` |
+
+O mesmo método foi usado na #69: três builds da mesma imagem (`--build-arg`, `-e` no runtime, `docker compose build`) mostrando que **sem `ARG`/`ENV` no `Dockerfile` a URL da API não é embutida**.
+
+### Lição
+
+> **Funcionalidade entregue sem verificação observada produz telas que não funcionam.** Nenhum dos 4 defeitos era visível por leitura de código — todos passaram pelo build, pelo eslint, pelo pytest e pela CI. Só apareceram quando alguém olhou a tela rodando.
+>
+> O espelho da lição de 02/10 (a sprint de segurança consumiu 42 SP e nunca demonstrou a V1 funcionando): a §11.3 já avisava que *hardening* sem verificação end-to-end produz entregas que não rodam. A Fase B mostra que vale para o outro lado também.
+
+### Gotchas novos
+
+- **O CORS padrão do código é `http://localhost:5173`.** Para testar em porta alta (18000/15173) é preciso passar `CORS_ORIGINS` **explícito** no `-e` do container — sem isso o browser toma 403 no preflight e o teste falha por um motivo que não é o do teste.
+- **`process.env` do container vence o `.env` do Vite.** Verificado no módulo servido: `http://localhost:18000` apareceu no JS servido, não `http://localhost:8000`.
+- **Para medir cor, pegue o elemento certo.** A primeira medição do status pegou o `<td>` (cor padrão) e deu "sem cor". O CSS estava certo, em um `<span class="badge">` dentro da célula.
+- **O `frontend/node_modules` local está vazio e com dono root** — build e lint têm que rodar **dentro da imagem** (`docker run --rm -v "$PWD/frontend/src:/app/src:ro" analsita-frontend:latest`).
+- **`pytest` e `flake8` não estão em `backend/requirements.txt`** — a CI instala separados. Para rodar local: `pip install pytest flake8` no container.
+- **A label `epico-7` não existe**; o MCP do GitHub não tem permissão — usar o `gh` da linha de comando.
+- **O fechamento automático de issue por PR não é indexado** neste repositório — as issues precisam ser fechadas à mão, com `gh issue close` e comentário de prova.
+- **`docker compose down` não aceita `--rm`** — usar `down -v` quando for preciso remover os volumes.
+
+### Dívidas que saíram desta lista
+
+- ~~Botão "Atualizar dados" não faz nada~~ → **fechado em #78**
+- ~~Categoria `zabbix` sempre com `json_invalido`~~ → **fechado em #79**
+- ~~Simulador sem semente (banco de referência mudando a cada execução)~~ → **fechado em #80**
+- ~~Contagem de falhas ausente no card "Vendas Hoje"~~ → **fechado em #82**
+- ~~Falta a confirmação no browser (6 ACs do PRD §10)~~ → **fechado em #67** — os 6 marcados `[x]` com evidência observada
+
+### Dívida que **fica** (de propósito)
+
+- **[#81](https://github.com/OsirisMariano/analsita/issues/81) — `/stats` sem filtro de data.** A API devolve as transações do banco inteiro, sem recorte por dia. Com o banco de referência é invisível; com dados antigos o card "Vendas Hoje" mente. **Não entra neste PR**: mexer na agregação do `/stats` muda a referência de todos os ACs e exige revalidação. Registrada com a V1 já funcional.
+
+### Estado ao fim desta fase
+
+- PRD elevado a **v1.5** — §10 com os 6 ACs `[x]`, §8 com a V1 como "entregue e validada no browser", §11.4 com a tabela dos 8 passos e o que falhou
+- Branch `feature/epico7-fase-b-validacao-integrada` com 4 commits de correção (nenhum empurrado ainda)
+- É7 fechado: #67 e #62 encerradas, #78/#79/#80/#82 delivered junto do PR
+
+---
+
 ## 🗓️ Quarta, 21/10 (tarde) — Bloco 2 do É7: #74 e #75 entregues
+
+
 
 > Continuação do mesmo dia. Duas das três dívidas registradas abaixo no Bloco 1 foram fechadas. Branch nova, empilhada sobre `feature/epico7-polling-e-mocks` (que segue **sem push**): `feature/epico7-readonly-e-env-fallback`.
 

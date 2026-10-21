@@ -5,10 +5,10 @@
 | Campo | Detalhe |
 |---|---|
 | **Produto** | Analista SemParar |
-| **Versão do documento** | 1.4 |
-| **Status** | **V1 destravada no código** — #63 (API key opt-in) e #64 (preflight CORS) entregues; #65 (polling) e #66 (mount DS_SFTP) entregues; falta a confirmação no browser (#67) |
+| **Versão do documento** | 1.5 |
+| **Status** | **V1 validada no browser** — todos os critérios de aceite do §10 foram confirmados em container isolado (#67). #65 (polling), #66 (mount DS_SFTP), #69 (`build.args` morto), #74 (banco somente-leitura), #75 (URL da API sem `.env`), #78 (botão de refresh), #79 (categoria zabbix) e #80 (semente do simulador) entregues |
 | **Data** | 21/10/2026 |
-| **Última revisão** | 21/10/2026 — [#65](https://github.com/OsirisMariano/analsita/issues/65) (polling sem sobreposição), [#66](https://github.com/OsirisMariano/analsita/issues/66) (mount `var/DS_SFTP`), [#69](https://github.com/OsirisMariano/analsita/issues/69) (`build.args` morto) |
+| **Última revisão** | 21/10/2026 — [#67](https://github.com/OsirisMariano/analsita/issues/67) (validação integrada em container isolado: 8/8 passos, 6/6 ACs do §10 confirmados no browser), [#82](https://github.com/OsirisMariano/analsita/issues/82) (contagem de falhas no card "Vendas Hoje") |
 | **Autor** | Equipe de Desenvolvimento |
 | **Stack** | Python/FastAPI, Vue 3, Tailwind CSS, SQLite, Docker |
 
@@ -163,7 +163,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 8. Roadmap
 
-### V1 — Base (entregue em código; confirmação no browser pendente)
+### V1 — Base (entregue e validada no browser — #67)
 - [x] API FastAPI com stats, monitoramento e transações
 - [x] Dashboard Vue com polling de 5s
 - [x] Validação de arquivos + badge de erros
@@ -172,7 +172,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - [x] Integração dos dados reais de validação de arquivos via API — ✅ **JÁ IMPLEMENTADA** (`GET /arquivos` e `GET /validacao-dados` retornam dados reais do backend). Estava marcada como pendente por engano. *Não* é mais item de backlog: o destravamento do 403 foi feito em #63 + #64
 - [ ] ~~Configuração dinâmica dos dispositivos monitorados~~ — 🔀 **DECISÃO DO PO (02/10): movida para a V2.** Na V1, a configuração se faz por variável de ambiente `EQUIPAMENTOS` (JSON), já implementada em `backend/app/main.py:72-84`. Uma API de configuração dinâmica continua **fora do escopo da V1** (§5.2) e passa a ser item de V2
 
-> **Por que a V1 está "entregue em código" mas não funciona:** o painel não carrega por um defeito de autenticação, não por falta de funcionalidade. Ver §11.
+> **A V1 está entregue e observada.** Os 6 critérios de aceite do §10 foram confirmados no browser em 21/10/2026, em container isolado (`--rm`, portas altas) — ver §11.4.
 
 ### V2 — Operacional (próximo)
 - **Diagnóstico de VPAR:** verificação automatizada de status de licença e funcionamento do software de reconhecimento de placas.
@@ -228,17 +228,16 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 
 ## 10. Critérios de Aceite (V1)
 
-> **Estado em 03/10/2026:** o bloqueio de runtime foi removido — #63 (API key opt-in) e #64 (preflight CORS) estão entregues. O que falta é a **verificação no browser**, que é o rito da #67.
-> Regra de marcação (inalterada): só marcar `[x]` com evidência observada no browser, nunca por leitura de código. Por isso os itens abaixo continuam **[ ]** — implements e testado, porém não observado no browser ainda.
-> Exceção: o critério de `OPTIONS` foi marcado por ter evidência de runtime direta (pytest + `curl` contra servidor real), detalhada na linha correspondente.
+> **Estado em 21/10/2026:** a verificação no browser foi feita. A #67 (validação integrada) executou o rito completo em **container isolado** (`--rm`, portas altas), e cada item abaixo tem evidência observada na tela — não por leitura de código. Regra de marcação cumprida.
+> Exceção mantida: o critério de `OPTIONS` foi marcado por ter evidência de runtime direta (pytest + `curl` contra servidor real), detalhada na linha correspondente.
 
-- [ ] ⏳ Dashboard exibe online/offline de todos os equipamentos cadastrados. — *implementado (`/stats`); aguardando confirmação no browser (#67)*
-- [ ] ⏳ Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — *implementado (`/stats`); aguardando confirmação no browser (#67)*
-- [ ] ⏳ Últimas 5 transações aparecem com horário, placa, valor e status colorido. — *implementado (`LIMIT 5` + CSS de cores); aguardando confirmação no browser (#67)*
-- [ ] ⏳ Badge de erros na sidebar reflete os arquivos com status `ERRO`. — *implementado (`store.totalErros`); aguardando confirmação no browser (#67)*
-- [ ] ⏳ Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — *implementado; aguardando confirmação no browser (#67)*
-- [ ] ⏳ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; validação integrada é a #67. Desde a #75 o clone limpo não depende mais de arquivo local: o frontend usa `http://localhost:8000` como padrão e o `frontend/.env.example` versionado documenta a configuração*
-- [x] `OPTIONS` em rota pública não retorna 403. — ✅ **Corrigido em #64.** Evidência de runtime, **não** de browser: pytest parametrizado nas 7 rotas públicas (falha em 16 casos ao remover a isenção) + `curl` contra `uvicorn` real devolvendo `200` com `access-control-allow-origin`; origem não permitida segue sem o cabeçalho (SEC-01) e `GET` sem chave segue em `403`. Confirmação no browser fica para a #67.
+- [x] Dashboard exibe online/offline de todos os equipamentos cadastrados. — ✅ **Confirmado no browser em 21/10/2026 (#67).** 4 cartões na tela, cada um com o status: "Antena Lado A OFFLINE", "Antena Lado B OFFLINE", "Câmera VPAR OFFLINE", "Saída Internet ONLINE" (só o `8.8.8.8` responde no ambiente isolado — os `192.168.1.x` são da rede real do posto)
+- [x] Vendas do dia e contagem de sucesso/falhas aparecem corretamente. — ✅ **Confirmado no browser em 21/10/2026 (#67).** Card "Vendas Hoje" com `R$ 803,85`, `Sucesso: 5` e `Falhas: 3` — os três batem com o `GET /stats` do container. A contagem de falhas só passou a aparecer depois do #82: até então a API devolvia e a tela descartava
+- [x] Últimas 5 transações aparecem com horário, placa, valor e status colorido. — ✅ **Confirmado no browser em 21/10/2026 (#67).** 5 linhas com horário, TAG, valor e badge — cor conferida no `getComputedStyle`: FALHA `rgb(239,68,68)` sobre `rgb(254,226,226)`, CONCLUIDO `rgb(16,185,129)` sobre `rgb(225,249,240)`, EM_ABERTO `rgb(255,171,0)` sobre `rgb(255,244,229)`
+- [x] Badge de erros na sidebar reflete os arquivos com status `ERRO`. — ✅ **Confirmado no browser em 21/10/2026 (#67), nos dois sentidos.** Com `/arquivos` → 15 arquivos e 0 ERRO, a badge some (só renderiza quando o contador é maior que zero). Com um mock removido à força (`mock_data/var/DS_SFTP/config.json`), `/arquivos` → 1 ERRO e a badge aparece como "Validação de Arquivos 1". O mock foi restaurado depois
+- [x] Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — ✅ **Confirmado no browser em 21/10/2026 (#67).** As 4 rotas navegadas (Câmeras, Leitoras, Validação de Arquivos, Validação de Dados) renderizam com console limpo
+- [x] Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — ✅ **Confirmado em 21/10/2026 (#67).** `docker compose up` sobe os dois serviços; `/health` e `/stats` respondem 200 em `localhost:8000` e o painel carrega em `localhost:5173`. Desde a #75 o clone limpo não depende mais de arquivo local: o frontend usa `http://localhost:8000` como padrão e o `frontend/.env.example` versionado documenta a configuração
+- [x] `OPTIONS` em rota pública não retorna 403. — ✅ **Corrigido em #64.** Evidência de runtime, **não** de browser: pytest parametrizado nas 7 rotas públicas (falha em 16 casos ao remover a isenção) + `curl` contra `uvicorn` real devolvendo `200` com `access-control-allow-origin`; origem não permitida segue sem o cabeçalho (SEC-01) e `GET` sem chave segue em `403`. **Reconfirmado em 21/10/2026 (#67)** no container isolado: preflight `200` com `access-control-allow-origin: http://localhost:15173`, e nenhum 403/500 em 88 requisições no log do container `api`
 
 ---
 
@@ -288,6 +287,29 @@ A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 fu
 |---|---|---|
 | #74 | O banco é aberto com `mode=ro` — a API não escreve no banco, e agora isso é garantido pelo motor do SQLite, não por convenção de código | `backend/tests/test_readonly_db.py` (3 testes; 2 deles falham se o `mode=ro` for removido) + `/stats` e `/transacoes` respondendo 200 em container real |
 | #75 | O frontend não depende mais do `frontend/.env` (que não é versionado): a URL da API tem valor padrão e há um `.env.example` versionado | `frontend/src/api.js` (fonte única da URL) + `frontend/.env.example` versionado + clone sem `.env` carregando o painel |
+
+**Estado em 21/10/2026 (#67 — Fase B, validação integrada):** o rito de aceite foi executado de verdade, em container isolado (`--rm`, portas 18000/15173), e o resultado não foi o esperado: **4 dos 8 passos falharam na primeira rodada.** O código estava "entregue" desde 03/10, mas a tela nunca tinha sido olhada.
+
+| Passo | O que foi verificado | Resultado |
+|---|---|---|
+| 1 | Sobe sem `backend/.env` e sem `env_file` | ✅ só `CORS_ORIGINS` explícito |
+| 2 | `GET /health` | ✅ 200 `{"status":"healthy","db_connected":true}` |
+| 3 | `GET /stats` | ✅ 200, R$ 803,85, 5 concluídas, 3 falhas, 4 equipamentos |
+| 4 | `OPTIONS` com `Origin` | ✅ 200 + `access-control-allow-origin` |
+| 5 | Dashboard na tela | ❌ **falhou** — faltava a contagem de falhas (#82) |
+| 6 | `GET /arquivos` | ✅ 15 arquivos, 0 ERRO |
+| 7 | Navegar nas 4 rotas | ❌ **falhou** — o botão "Atualizar dados" não recarregava nada (#78) |
+| 8 | Polling de 5s | ❌ **falhou** — as requisições se sobrepunham (#65) |
+| — | `GET /validacao-dados` | ❌ **falhou** — categoria `zabbix` com `json_invalido` (#79) |
+| — | `docker compose up` do zero | ✅ API 8000 e painel 5173 de pé, `/health` 200 |
+
+> **O que a rodada de teste encontrou:** o `HomeView.vue` despachava o evento `analista:refresh`, mas **ninguém escutava** — o botão "Atualizar dados" era um no-op (#78). A categoria `zabbix` do validador era `json_valor`, mas o `/etc/zabbix/zabbix_agent2.conf` é um **INI** (`Server=192.0.2.1`), não JSON — o validador tentava interpretá-lo como JSON e marcava `json_invalido` (#79). O polling de 5s disparava a próxima requisição sem esperar a anterior terminar (#65). E a contagem de falhas do `/stats` nunca chegava à tela (#82).
+>
+> **E o dado de referência, que também estava errado.** A #67 esperava R$ 803,85, mas o banco local tinha R$ 2.320,29 de 24/08/2026 — o simulador (`scripts/simulador_posto.py`) gerava números diferentes a cada execução, sem semente fixa. Agora há semente (`SIMULADOR_SEED`, padrão 154622) e o banco é **100% reproduzível**: 10 transações, 5 `CONCLUIDO` somando **R$ 803,85** (o valor que o card "Vendas Hoje" mostra), 2 `EM_ABERTO` e 3 `FALHA` (#80). A referência da #67 não precisou ser reescrita — virou verdade.
+>
+> **Sobre o `/stats` sem filtro de data (#81).** A API devolve as transações do banco inteiro, sem recorte por dia. Com o banco de referência isso é invisível (as 10 transações são de hoje), mas com dados antigos o card "Vendas Hoje" mente. A correção fica **fora** deste PR: mexer na agregação do `/stats` muda a referência de todos os ACs e exige revalidação. Registrada como #81, com a V1 já funcional.
+>
+> **O que a Fase B provou sobre o método.** A §11.3 e a §11.4 já apontavam que hardening sem verificação end-to-end produz entregas que não rodam. A Fase B mostra a mesma coisa do outro lado: **funcionalidade entregue sem verificação observada produz telas que não funcionam.** Nenhum dos 4 defeitos (#65, #78, #79, #82) era visível por leitura de código — todos passaram pelo build, pelo eslint, pelo pytest e pela CI. Só apareceram quando alguém olhou a tela rodando.
 
 > **Por que o mount de `./data` continua gravável.** A tentativa natural era colocar `:ro` no volume do compose, mas o `entrypoint.sh` precisa **criar** o banco quando ele ainda não existe — um diretório somente-leitura impediria isso. A garantia que importa ("a API não escreve") foi posta no lugar certo: dentro do programa, com `mode=ro`. O isolamento de filesystem continua não implementado e está fora do escopo da V1.
 
