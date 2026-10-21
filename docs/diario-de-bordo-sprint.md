@@ -5,6 +5,27 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite, parte 3, b) — Publicado: PR #86 mergeado no `main`, tags v1.0.0 e v1.0.1 criadas
+
+> Registro factual do que foi publicado. Os **detalhes e o porquê** estão na entrada anterior (parte 3).
+
+| | |
+|---|---|
+| **PR** | [#86](https://github.com/OsirisMariano/analsita/pull/86) — `release: develop -> main (v1.0.1 — correção do #81)` — **MERGED** em 21/10/2026 18:00 UTC |
+| **Merge commit** | `b2b8b26` (2 pais: `022edd6` = develop, `932f89a` = main anterior) — **merge commit, não squash** |
+| **Conteúdo** | `main` e `develop` ficaram **idênticos** (`git diff` vazio) — 7 arquivos, +462/−16 |
+| **Tags** | `v1.0.0` → `932f89a` (É7, retroativa) · `v1.0.1` → `b2b8b26` (este release) |
+| **CI** | 3/3 verde no PR de release (backend, frontend, build das imagens) |
+| **Verificação** | `main:257` já tem `WHERE date(timestamp) = date('now', 'localtime')`; não resta agregação sem filtro; os 4 commits do #81 legíveis no histórico do `main` |
+
+**O conflito que o release teve (e como foi resolvido).** O merge acusou conflito em 4 arquivos — `scripts/simulador_posto.py`, `backend/tests/test_readonly_db.py`, `docs/PRD.md` e o diário. A causa é conhecida e é a mesma do #84: o release do É7 entrou no `main` como **squash**, então o `main` e o `develop` carregam o **mesmo trabalho por caminhos históricos diferentes**, a partir do mesmo ancestral (`bbc8ed3`). Por isso os dois lados mexiam nos mesmos arquivos.
+
+A resolução foi mechanicalamente segura: comparadas as árvores, o `main` (`932f89a`) e o `develop` (`80fb80f`) são **idênticos** — exceto pelas 10 linhas do diário escritas *depois* do release. Ou seja, o `develop` contém todo o conteúdo do `main` mais a correção do #81. Resolver mantendo a versão do `develop` em todos os arquivos conflictedos produz uma árvore **idêntica à do `develop`**, e o diff resultante contra o `main` é exatamente o conjunto de 7 arquivos deste release. Verificado antes de commitar, e o `git diff main develop` está vazio desde então.
+
+> **Lição para o próximo release.** Este conflito era previsível: ele vem do squash do #84, não do conteúdo. A regra nova no doc de sprint (release sempre com merge commit) existe para não repetir isso — com merge commit, o `main` e o `develop` compartilham o ancestral certo e o merge de release não conflita.
+
+---
+
 ## 🗓️ Quarta, 21/10 (noite, parte 3) — Release: a correção do #81 vai para o `main` (v1.0.1)
 
 > O É7 já tinha sido publicado. Esta entrada é o release da **correção** que ficou depois dele — e, junto, a política que faltava para que um release fora do ciclo da sprint deixe de ser uma discussão a cada vez.
