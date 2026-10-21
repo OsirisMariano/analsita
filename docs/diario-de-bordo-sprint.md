@@ -5,6 +5,79 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite, parte 5) — Planejamento do É8: 5 decisões, 59 SP, 3 ondas
+
+> A entrada anterior fechou o container. Esta abre o conteúdo: o É8 deixou de ser "5 pendências de segurança sem prazo" e virou um sprint com função definida, tasks com critério de aceite, story points e data.
+
+### O que a §11.2 exigia e o que faltava
+
+O PRD §11.2 classificava #52, #53, #54 e #55 como *"backlog sem prazo — reescritos quando as funções estiverem definidas"*. A #51 entrava na mesma lista pelo título. **Função definida** era o que faltava: as 5 issues diziam *o quê* fazer ("evoluir para autenticação completa", "aplicar rate limiting") e não diziam **quem faz o quê, até onde, e como se sabe que acabou**.
+
+Planejar exige decidir o que as issues não decidiam. São 5 decisões, e elas não são técnicas — são de escopo.
+
+### As 5 decisões
+
+| # | Decisão | Escolha |
+|---|---|---|
+| **D1** | Onde fica a identidade? | **`auth.db` separado** (SQLite gravável) |
+| **D2** | Onde fica o rate limit? | **In-process** (FastAPI), chave por IP/cliente |
+| **D3** | A #52 (TLS) executa no É8? | Escopo sim, **Onda 3 (condicionada)**; recomendação do PO: transferir para a V2 |
+| **D4** | Roles entram? | **Não** — identidade + 1 nível (`admin`/leitura). A matriz é item da V2 |
+| **D5** | Quando fecha? | **06/11/2026**, começando em 26/10/2026 |
+
+**D1 e D2 vieram do código, não da preferência do PO.** A API abre o banco de transactions com `mode=ro` (§7) — ela **não pode** gravar uma tabela de usuários no mesmo arquivo. Daí o `auth.db` separado; e como o limite é in-process, a #54 **não** depende da #52, e as ondas rodam em paralelo.
+
+**D3 é a decisão que este planejamento custou mais.** A #52 é o épico de **menor valor e maior risco** do lote: certificado self-signed, sem cliente, sem domínio e sem operação contínua (§11.1) protege uma rede que não existe — e é o que mais pode quebrar a V1, porque muda a origem do CORS, a URL da API e o preflight. A recomendação é **transferi-la para a V2**, onde já existem frontend de produção e operação real. Mas a #52 **fica** no milestone: tirá-la de lá a transformaria em issue órfã, que é exatamente o problema que a parte 4 desta noite acabou de resolver. Fica na **Onda 3**, a última, e a decisão de executar ou transferir se toma no fim da Onda 2.
+
+### A auditoria que mudou o escopo antes de estimar
+
+Antes de dar número, o PO auditou o código. **Três achados reescreveram o plano:**
+
+1. **Não existe segredo no `mock_data/` hoje.** Os 19 arquivos versionados são placeholders: `licenca.V2C` = "mock license data", `cert.p12` = "mock certificate", `zabbix_agent2.conf` = `Server=192.0.2.1` (RFC 5737). O único dado não-placeholder são **3 IPs de LAN** em 7 arquivos de mock. A #51 deixou de ser "limpeza" e virou **guardrail de futuro** — e, por não haver segredo real, **o histórico do git não precisa ser reescrito**. Reescrever invalidaria as tags `v1.0.0`/`v1.0.1` sem comprar segurança nenhuma.
+2. **A API é `mode=ro`.** Uma tabela de usuários no mesmo banco é impossível (D1).
+3. **O frontend não tem nenhuma ocorrência de `login`/`token`/`Authorization`** (0 hits em `frontend/src/`). Autenticação obrigatória sem tela de login quebraria o painel — exatamente o 403 da §11.4. Daí o **modo opt-in** (`AUTH_ENABLED`), que espelha o padrão que a #63 já provou para a API Key.
+
+> **O terceiro achado é a armadilha do É8 inteira.** Se alguém implementar a #53 sem a tela de login e sem o modo opt-in, o produto fica igual estava em 03/10 — a tela não abre — e o É8 vira mais uma entrega de hardening que ninguém viu. Por isso o rito de 8 passos entra **por épico**, e o AC da #53 exige o rito **nos dois modos** (ligado e desligado).
+
+### O plano
+
+**59 SP em 3 ondas** (a sprint anterior entregou 42 SP em 6 dias, ≈7 SP/dia):
+
+| Onda | Épicos | SP | Janela |
+|---|---|---|---|
+| 1 | #51 (6) + #53 (20) | 26 | 26/10 → 29/10 |
+| 2 | #55 (12) + #54 (11) | 23 | 30/10 → 04/11 |
+| 3 | #52 (10) — **condicionada** | 10 | 05/11 → 06/11 |
+
+**A #53 vem primeiro porque é a peça central:** a auditoria da #55 precisa saber **quem** acessou, e a #54 fica melhor com chave por usuário do que só por IP. A #51 é a mais independente do lote — guardrail barato, fecha rápido, não bloqueia nada.
+
+**O número que decide o rate limit:** o dashboard faz polling a cada 5 s = **12 req/min** por cliente. Limite abaixo de ~30/min **derruba o produto** — por isso há AC explícito de que o polling normal nunca toma 429.
+
+### O que foi materializado
+
+- `docs/sprint-e8-seguranca-evolucao.md` — o doc do sprint: decisões, 5 épicos com tasks/SP/AC, ondas, dependências, DoR (**nova**), DoD, rito de 12 passos, KPIs, riscos, fora de escopo.
+- **As 5 issues reescritas** (#51–#55): função definida, tabela de tasks com AC, critérios de aceite em BDD, dependências e "fora do escopo" — e o label `backlog-futuro` trocado por `sprint-e8`.
+- **PRD v1.7**: nova **§12** (resumo executivo do É8), §5.2 e §8 V2 com referência cruzada, §11.2 marcada como cumprida.
+- `docs/sprint-v1-funcional-seguranca.md`: a lista "Pendências futuras" virou **tabela de rastreabilidade** L-1/L-2 → issue → onde está agora.
+- Milestone É8 com **descrição do plano** e prazo **06/11/2026** no campo `due_on` (a data que ficou sem prazo na parte 4). O **início em 26/10** está no texto da descrição e nos docs — a API do GitHub só aceita `start_on` na criação do milestone, e este foi criado antes do planejamento.
+- Board: #51–#55 movidas de `📋 BACKLOG` para `📥 TO DO`.
+
+### Estado final
+
+| | |
+|---|---|
+| Milestone É8 | `open`, 26/10 → 06/11/2026, 5 issues |
+| Issues | 5 reescritas, 59 SP no total, 0 soltas |
+| Board | 5 em `📥 TO DO` |
+| Execução | **nenhuma task iniciada** — este registro é só o plano |
+
+> **A lição continua sendo a mesma das outras três desta semana, e ela é sobre método.** A parte 4 mostrou que faltava uma regra para fechar container. Esta mostra que faltava **decisão** para abrir sprint. As duas coisas são o mesmo defeito: o projeto tinha 5 pendências de segurança com o formato de desabafo ("aplicar rate limiting", "evoluir para autenticação completa") e nenhum formato de decisão. **Pendência sem decisão é dívida; dívida com data é plano.**
+
+---
+
+
+> O `main` estava correto, o código estava correto, os 54 issues estavam fechados — e mesmo assim a aba de milestones do repositório mostrava **7 épicos em andamento, todos atrasados**. Nenhum trabalho estava em andamento. Era só um container que ninguém fechava.
+
 ## 🗓️ Quarta, 21/10 (noite, parte 4) — Higiene do GitHub: os 7 milestones do É1..É7 fechados, É8 criado
 
 > O `main` estava correto, o código estava correto, os 54 issues estavam fechados — e mesmo assim a aba de milestones do repositório mostrava **7 épicos em andamento, todos atrasados**. Nenhum trabalho estava em andamento. Era só um container que ninguém fechava.

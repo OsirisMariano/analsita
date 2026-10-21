@@ -98,6 +98,8 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - Comandos de reinício reais em leitoras (atualmente simulado).
 - API de configuração dinâmica de dispositivos.
 
+> **Atualizado em 21/10/2026:** a autenticação e o controle de acesso continuam fora da **V1**, mas deixam de ser "sem destino" — estão planejados no **É8** (§12). A diferença entre a V1 e o É8: no É8 a autenticação é **opt-in por variável de ambiente**, exatamente como a API Key da #63, para que a V1 continue funcionando sem tela de login.
+
 ## 6. Requisitos Funcionais (V1)
 
 > Convenção: `FR-XX` = Requisito Funcional. Cobertura mapeada para os artefatos existentes.
@@ -179,9 +181,11 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - **Saúde do sistema:** alertas sobre equipamentos travados ou falhas de comunicação recorrentes (agregação por janela de tempo).
 - **Câmeras reais:** exibição de streams reais (RTSP) com status de conectividade.
 - **Leitoras reais:** comando de reinício efetivo via API + histórico de última leitura.
-- **Autenticação e roles:** login com perfis (analista, supervisor, admin).
+- **Autenticação e roles:** login com perfis (analista, supervisor, admin). → **Parcialmente adiantado pelo É8** (§12): a **identidade** (login/senha, token, `auth.db`) sai no É8; a **matriz de roles** e as telas de administração continuam na V2 (decisão D4).
 - **Configuração dinâmica dos dispositivos:** API para listar/editar os equipamentos monitorados, hoje fixos em `_DEFAULT_EQUIPAMENTOS` (promovido da V1 em 02/10).
 - **WebSockets:** substituir o polling por atualização push em tempo real.
+
+> **A V2 e o É8 não dividem a mesma sprint.** O É8 (59 SP, §12) consome a janela de 26/10 a 06/11. A V2 entra depois — e a §11.1 é explícita: endurecimento não pode consumir a entrega da funcionalidade.
 
 ### V3 — Analítica & Proativa
 - **Histórico persistente:** séries temporais de status para análise de recorrência de falhas.
@@ -249,6 +253,8 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 O Analista SemParar é **projeto de estudos**, não produto em produção. Não há cliente, SLA, ambiente produtivo nem operação contínua. Isso **remove a segurança do caminho crítico**: endurecimento não pode consumir a entrega da funcionalidade.
 
 ### 11.2 Decisões do PO (01/10/2026)
+
+> **Atualizado em 21/10/2026:** a linha sobre #52/#53/#54/#55 ("Backlog sem prazo — reescritos quando as funções estiverem definidas") **cumpriu o prazo**. As funções foram definidas e as 5 issues reescritas com tasks, AC e story points — ver **§12**.
 
 | Tema | Decisão | Consequência |
 |---|---|---|
@@ -370,6 +376,55 @@ Já valia desde a v1.0 (ver rodapé, *"Documento vivo"*) e não foi cumprido —
 
 **Resumo da auditoria:** 15 conformes, 1 corrigido (FR-19), 1 corrigido (FR-11), 2 mockados por decisão de escopo (FR-14/16), **nenhum parcial em aberto** (FR-03 corrigido em 21/10, #65).
 **Nenhum requisito da §6 está ausente no código.** O bloqueio era de integração (§11.4) e foi removido em 03/10; falta a confirmação no browser (#67).
+
+## 12. Planejamento do É8 — Segurança & Evolução (21/10/2026)
+
+> As 5 pendências que a §11.2 deixou "sem prazo" foram planejadas. O documento completo do sprint — decisões, tasks, critérios de aceite, ondas, riscos — está em [`docs/sprint-e8-seguranca-evolucao.md`](sprint-e8-seguranca-evolucao.md). Esta seção é o resumo executivo no PRD.
+
+### 12.1 As 5 decisões que o plano exigia
+
+| # | Decisão | Escolha | Motivo |
+|---|---|---|---|
+| **D1** | Onde fica a identidade? | **`auth.db` separado** (SQLite gravável) | A API abre o banco de transactions com `mode=ro` (§7) — **não pode** gravar tabela de usuários no mesmo arquivo. OIDC exigiria IdP externo, incompatível com §11.1 |
+| **D2** | Onde fica o rate limit? | **In-process** (FastAPI), chave por IP/cliente | Mantém a #54 **independente** da #52 e permite as ondas em paralelo. `limit_req` do nginx amarraria as duas |
+| **D3** | A #52 (TLS) executa no É8? | **Escopo sim, execução na Onda 3 (última, condicionada).** Recomendação do PO: transferir para a **V2** | Certificado self-signed sem cliente, domínio ou operação contínua (§11.1) é teatro de alto custo, e é o épico que mais pode quebrar a V1 (muda CORS, URL da API e preflight) |
+| **D4** | Roles entram? | **Não.** Identidade + 1 nível (`admin`/leitura) | A matriz `analista/supervisor/admin` é item da **V2** (§8) e, sem tela para usá-la, seria código morto |
+| **D5** | Quando fecha? | **06/11/2026**, começando em 26/10/2026 | 7 dias úteis cobrem as Ondas 1 e 2 (49 SP). Com a Onda 3 inteira, são 8,5 dias — a data serve para os dois cenários |
+
+### 12.2 Escopo e estimativa
+
+| Épico | Issue | SP | Onda | Risco |
+|---|---|---|---|---|
+| Dados sensíveis fora do versionamento | [#51](https://github.com/OsirisMariano/analsita/issues/51) | 6 | 1 | 🟢 baixo |
+| Autenticação real (login/senha) | [#53](https://github.com/OsirisMariano/analsita/issues/53) | 20 | 1 | 🔴 alto |
+| Logging estruturado e auditoria | [#55](https://github.com/OsirisMariano/analsita/issues/55) | 12 | 2 | 🟡 médio |
+| Rate limiting | [#54](https://github.com/OsirisMariano/analsita/issues/54) | 11 | 2 | 🟡 médio |
+| TLS/HTTPS via nginx | [#52](https://github.com/OsirisMariano/analsita/issues/52) | 10 | 3 (condicionada) | 🔴 alto |
+| **TOTAL** | | **59** | | |
+
+**Referência de capacidade:** a sprint anterior entregou 42 SP em 6 dias (≈7 SP/dia, 1 dev).
+
+### 12.3 O que a auditoria do código mudou no escopo
+
+Três achados de 21/10/2026 reescreveram o plano antes da estimativa:
+
+1. **Não há segredo no `mock_data/` hoje.** Os 19 arquivos versionados são placeholders ("mock license data", `Server=192.0.2.1` — RFC 5737). O único dado não-placeholder são **3 IPs de LAN** em 7 mocks. A #51 é, portanto, **guardrail de futuro**, não limpeza — e **o histórico do git não precisa ser reescrito** (o que invalidaria as tags `v1.0.0`/`v1.0.1` sem comprar segurança).
+2. **A API é `mode=ro` no banco de transactions** (§7). Uma tabela de usuários no mesmo arquivo é impossível — daí o `auth.db` separado (D1).
+3. **O frontend não tem nenhuma ocorrência de `login`/`token`/`Authorization`.** Autenticação obrigatória sem tela de login quebraria o painel — exatamente o 403 da §11.4. Daí o **modo opt-in** (`AUTH_ENABLED`), que espelha o padrão que a #63 já provou para a API Key.
+
+### 12.4 Regras de execução herdadas
+
+- **Rito de 8 passos (§10) por épico**, não só no fim da sprint — a §11.3 registra o preço de endurecer sem observar.
+- **A referência do painel não pode mudar:** `/stats` em **R$ 803,85 / 5 concluídas / 3 falhas** (o número que "virou verdade" no #80).
+- **Modo opt-in testado nos dois estados** (feature ligada e desligada).
+- **0 respostas 401/403 novas** no caminho do painel.
+- **Milestone fecha quando o épico fecha** (a regra escrita em `docs/sprint-v1-funcional-seguranca.md`).
+
+### 12.5 A regra que o É8 não pode quebrar
+
+> O §11.1 é explícito: *"endurecimento não pode consumir a entrega da funcionalidade"*.
+
+O É8 **não** disputa espaço com a V2 (§8) dentro do mesmo sprint. Os 7 itens da V2 (diagnóstico de VPAR, saúde do sistema, câmeras reais, leitoras reais, config dinâmica, WebSockets, auth+roles) **não fazem parte do É8** — e a §11.3 já registrou o que acontece quando hardening come a entrega: 42 SP de segurança enquanto a V1 nunca foi demonstrada funcionando. A ordem proposta é **É8 primeiro, V2 depois**, e a V2 é grande demais para entrar junto.
 
 ---
 

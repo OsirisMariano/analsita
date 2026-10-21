@@ -233,11 +233,17 @@ Fechar o milestone **não** mexe em nenhuma das issues: o `stateReason` de cada 
 
 ## Pendências futuras (não incluídas nesta sprint)
 
-- L-1: Excluir dados sensíveis de `mock_data/` do versionamento
-- L-2: Configurar TLS/HTTPS via reverse proxy (nginx)
-- Autenticação completa com login/senha (esta sprint usa apenas API Key)
-- Rate limiting nos endpoints
-- Logging estruturado e auditoria de acessos
+**Todas as 5 foram planejadas em 21/10/2026 e agora vivem no milestone É8** — ver [`docs/sprint-e8-seguranca-evolucao.md`](sprint-e8-seguranca-evolucao.md) e a §12 do PRD. A lista abaixo é mantida só para preservar a rastreabilidade dos códigos L-1/L-2.
+
+| Código antigo | Issue | Onde está agora |
+|---|---|---|
+| L-1: Excluir dados sensíveis de `mock_data/` do versionamento | [#51](https://github.com/OsirisMariano/analsita/issues/51) | É8 — Épico 1, Onda 1, 6 SP |
+| L-2: Configurar TLS/HTTPS via reverse proxy (nginx) | [#52](https://github.com/OsirisMariano/analsita/issues/52) | É8 — Épico 5, Onda 3 (condicionada), 10 SP |
+| Autenticação completa com login/senha (esta sprint usa apenas API Key) | [#53](https://github.com/OsirisMariano/analsita/issues/53) | É8 — Épico 2, Onda 1, 20 SP |
+| Rate limiting nos endpoints | [#54](https://github.com/OsirisMariano/analsita/issues/54) | É8 — Épico 4, Onda 2, 11 SP |
+| Logging estruturado e auditoria de acessos | [#55](https://github.com/OsirisMariano/analsita/issues/55) | É8 — Épico 3, Onda 2, 12 SP |
+
+> **Mudou o conteúdo, não só o paradeiro:** o PRD §11.2 mandava *"reescrever quando as funções estiverem definidas"*. As 5 issues foram reescritas com função, tasks, critérios de aceite e story points.
 
 ---
 
