@@ -5,6 +5,69 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (tarde) — Bloco 2 do É7: #74 e #75 entregues
+
+> Continuação do mesmo dia. Duas das três dívidas registradas abaixo no Bloco 1 foram fechadas. Branch nova, empilhada sobre `feature/epico7-polling-e-mocks` (que segue **sem push**): `feature/epico7-readonly-e-env-fallback`.
+
+### Entregue (2 de 7 tasks do É7)
+- ✅ **#74 (T8) — banco SQLite em modo somente-leitura** → `backend/app/main.py` + `backend/tests/test_readonly_db.py`
+- ✅ **#75 (T9) — frontend sem depender de `.env` não versionado** → `frontend/src/api.js` + `frontend/.env.example`
+
+### O que foi feito
+
+**#74 — a API não escreve no banco (e agora isso é garantido, não convenção)**
+
+O PRD §7 exigia que a API não escrevesse, mas a garantia era só do código: as rotas faziam `SELECT` e nada impedia uma escrita acidental. A conexão passou a ser aberta com `mode=ro` na URI, que faz o **próprio motor do SQLite** recusar qualquer escrita (`attempt to write a readonly database`).
+
+O mount de `./data` **continua gravável de propósito**: o `entrypoint.sh` precisa criar o banco quando ele ainda não existe, e um diretório somente-leitura impediria isso. A garantia que importa foi posta no lugar certo — dentro do programa. O isolamento de filesystem (`:ro` no mount) segue fora do escopo da V1.
+
+**#75 — o painel funciona sem nenhum arquivo local**
+
+O `frontend/.env` cai na regra `.env` do `.gitignore` da raiz e nunca foi versionado. Quem clonava o repositório recebia o frontend sem configuração e o painel não carregava (`fetch("undefined/stats")`). Agora:
+
+- `frontend/src/api.js` é a **fonte única** da URL: usa `VITE_API_URL` quando ela existe e cai para `http://localhost:8000` quando não existe. O `store.js` e a `HomeView.vue` leem a URL de lá — antes cada um repetia a definição.
+- `frontend/.env.example` entra no repositório (não é ignorado pelo `.gitignore`, confirmado com `git check-ignore`), documentando a configuração como **opcional**.
+
+### Validação (gate local + container real + browser)
+
+| Gate | Resultado |
+|---|---|
+| `pytest backend/tests` | **53 passed** (50 + 3 novos) |
+| `flake8 backend --select=E9,F63,F7,F82` | **0** |
+| `npm run build` (dentro da imagem) | ✓ built (1829 modules) |
+| Bundle gerado | contém `http://localhost:8000` e **0 ocorrências** de `undefined/stats` |
+| `docker compose config` | válido |
+| Container real — escrita pela API | **recusada**: `attempt to write a readonly database` |
+| Container real — escrita pelo simulador | **ok** (o mount segue gravável) |
+| Container real — `/transacoes` e `/stats` | 200, e o **hash e a data do banco não mudaram** |
+| Container real — `PRAGMA database_list` | `/var/abastece/dados/abastece.db` (caminho normal, sem alteração) |
+| **Browser sem o `frontend/.env`** | painel carrega com dados, console limpo, `GET /stats` → 200 e `GET /monitoramento` → 200 (antes: `undefined/stats` e erro no console) |
+| Browser — Validação de Arquivos | 15 linhas, **0 ERRO** |
+| Browser — Validação de Dados | tudo `ok`, **menos** o `zabbix` (dívida preexistente, ver Bloco 1) |
+
+### Prova de que o teste pega a regressão
+
+O teste foi rodado **com a correção removida** (`sqlite3.connect(DB_PATH)` sem `mode=ro`): **2 dos 3 testes falham** (`test_conexao_rejeita_escrita` e `test_conexao_usa_uri_readonly`). Sem o `mode=ro`, o conjunto passa a falhar — o teste prende o contrato, não só o efeito.
+
+> `test_api_nao_altera_o_banco` **passa** mesmo sem a correção — ele prova o comportamento (as rotas leem e não mexem no arquivo), não a garantia. A garantia é dos outros dois.
+
+### Gotcha novo
+
+- O `gh issue create` com o rótulo `epico-7` **falha**: o rótulo não existe no repositório. Os rótulos em uso no É7 são `frontend`, `backend`, `infra/docker`, `epic`, `security`, `bug`.
+- O MCP do GitHub (`github_create_issue`) retorna `Resource not accessible by personal access token` — **use o `gh` da linha de comando** para criar issues.
+
+### Dívidas que saíram desta lista
+- ~~`frontend/.env` não versionado derruba o AC do PRD §10~~ → **fechado em #75**
+- ~~SQLite não é read-only (PRD §7)~~ → **fechado em #74** (no código; o isolamento de filesystem segue fora do escopo)
+
+### Dívidas que continuam
+- `scripts/simulador_posto.py` é **aleatório** → os números de referência da #67 não se reproduzem em clone limpo. Fix proposto: `random.seed()` fixo.
+- Categoria `zabbix` em `validacoes_config.py:81` (preexistente) — o PO decidiu **abrir issue e corrigir junto**; ainda não feito.
+- **Fase B da #67** (latência induzida para provar o #65, e grep do bundle para provar o #69).
+- **Push e PR** das duas branches — nada foi enviado ao remoto.
+
+---
+
 ## 🗓️ Quarta, 21/10 — Épico 7: #65, #66 e #69 entregues
 
 ### Entregue (3 de 7 tasks do É7)
@@ -60,8 +123,8 @@
 
 ### Dívidas conhecidas (fora do É7)
 
-- `frontend/.env` **não é versionado** (cai no `.env` do `.gitignore` da raiz) → em clone limpo o frontend sobe sem `VITE_API_URL` e faz `fetch("undefined/stats")`. Derruba o AC do PRD §10 *"Toda a solução sobe com `docker compose up`"*. Fix: fallback no código + `frontend/.env.example` versionado.
-- **SQLite ainda não é read-only** (PRD §7 RNF): `docker-compose.yml:18` monta `./data` sem `:ro`. Decisão do PO em 21/10: read-only **no código** (`mode=ro` na URI do `sqlite3.connect`), mantendo o mount gravável porque o `entrypoint.sh` precisa escrever o banco quando ele não existe.
+- ~~`frontend/.env` **não é versionado** (cai no `.env` do `.gitignore` da raiz) → em clone limpo o frontend sobe sem `VITE_API_URL` e faz `fetch("undefined/stats")`. Derruba o AC do PRD §10 *"Toda a solução sobe com `docker compose up`"*.~~ → **FECHADO no Bloco 2 do mesmo dia (#75).**
+- ~~**SQLite ainda não é read-only** (PRD §7 RNF): `docker-compose.yml:18` monta `./data` sem `:ro`. Decisão do PO em 21/10: read-only **no código** (`mode=ro` na URI do `sqlite3.connect`), mantendo o mount gravável porque o `entrypoint.sh` precisa escrever o banco quando ele não existe.~~ → **FECHADO no Bloco 2 do mesmo dia (#74).**
 - `scripts/simulador_posto.py` é **aleatório** → os números de referência da #67 não se reproduzem em clone limpo. Fix proposto: `random.seed()` fixo.
 
 ---
