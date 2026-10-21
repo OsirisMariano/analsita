@@ -95,7 +95,7 @@ A Sprint V1 Funcional entregou um sistema funcional com dados reais via API. Por
 
 ### 6. Frontend Produção
 
-**O que era:** O container do frontend rodava `vite dev` (servidor de desenvolvimento) com `--host`. O Vite dev expõe HMR WebSocket (execução de código arbitrário), error overlays com snippets de código, e roda显著 mais lento. O `--host` bindava em `0.0.0.0`, acessível de qualquer máquina na rede.
+**O que era:** O container do frontend rodava `vite dev` (servidor de desenvolvimento) com `--host`. O Vite dev expõe HMR WebSocket (execução de código arbitrário), error overlays com snippets de código, e roda significativamente mais lento. O `--host` bindava em `0.0.0.0`, acessível de qualquer máquina na rede.
 
 **O que foi feito:**
 - Dockerfile alterado para build de produção (`npm run build`)
@@ -146,8 +146,46 @@ main (produção — sempre estável e deployável)
 - `develop` é criada a partir de `main` no início da sprint
 - Cada feature branch é criada a partir de `develop`
 - Features são mergeadas em `develop` após validação individual
-- `develop` → `main` é feito **uma única vez**, ao final da sprint, após validação completa
+- `develop` → `main` é feito ao final da sprint, após validação completa
 - Se `develop` acumular problemas, basta não mergeá-la em `main`
+
+### Exceção: release de correção crítica fora do ciclo da sprint
+
+A regra "um release por sprint" tem como propósito **não promover trabalho inacabado**. Quando uma correção crítica é validada como se fosse uma entrega completa — mas só depois do release da sprint — o certo é promover o mesmo assim, e não deixar a `main` carregando o defeito até a sprint seguinte.
+
+Condições para o release fora do ciclo, **todas** obrigatórias:
+- o defeito está **validado end-to-end** (a mesma régua dos ACs do §10 do PRD: observado rodando, não só por leitura de código);
+- o diff entre `develop` e `main` contém **apenas a correção** — nenhum outro trabalho pendente viaja junto;
+- a CI está verde nos dois branch targets;
+- o release é um PR de `develop` → `main`, revisado como qualquer outro.
+
+Quando a `develop` **não** cumpre essas condições, a regra geral prevalece: espera-se o fim da sprint. O critério não é a data, é a maturidade da entrega.
+
+> **Por que o caso do #81 (21/10/2026) exigiu essa regra.** O `main` publicado até então somava o banco inteiro no card "Vendas Hoje" (o FR-02 do PRD pede o total **do dia**). O defeito estava **latente**: o simulador da `main` só gerava o dia corrente, então o número saía certo por coincidência — e o bug só apareceria no primeiro banco real, que acumula histórico. Como a próxima sprint nasce da `main` ("`develop` é criada a partir de `main`"), adiar significaria construir a sprint seguinte sobre uma base que promete "Vendas Hoje" e entrega a soma de todos os dias.
+
+### Release sempre com merge commit
+
+O `develop` → `main` é mergeado com **merge commit**, nunca com squash. O squash achata o histórico de uma entrega inteira em um commit e esconde de onde cada mudança veio — foi o que aconteceu no release do É7 (#84), que deixou 23 commits de `develop` sem relação aparente com o `main`. Com merge commit, o `main` mostra a entrega como foi feita, commit a commit.
+
+### Versionamento por tag
+
+Cada release publicado recebe uma **tag anotada** que identifica aquela versão:
+
+```
+vMAJOR.MINOR.PATCH
+```
+
+| Componente | Sobe quando |
+|---|---|
+| `MAJOR` | quebra de contrato da API ou da V1 inteira |
+| `MINOR` | entrega de funcionalidade nova (épico fechado) |
+| `PATCH` | correção de defeito sobre uma versão já lançada |
+
+A tag aponta para o **merge commit do release** na `main` — é ela, e não a branch, que identifica "a versão que está no ar". Sem tag, um release é só um ponteiro de branch: não há como citar, verificar ou reverter uma versão específica.
+
+A primeira tag deste repositório foi criada em 21/10/2026 e retro-rotulou o release do É7 (#84) como `v1.0.0`, para que a numeração não mentisse sobre um release anterior que nunca foi rotulado. Nenhum commit foi reescrito ou movido.
+
+> O `frontend/package.json` está em `0.0.0` (placeholder do Vite) e **não** é o versionamento do produto. O `CHANGELOG` é o diário de bordo (`docs/diario-de-bordo-sprint.md`).
 
 ---
 

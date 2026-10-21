@@ -5,6 +5,58 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite, parte 3) — Release: a correção do #81 vai para o `main` (v1.0.1)
+
+> O É7 já tinha sido publicado. Esta entrada é o release da **correção** que ficou depois dele — e, junto, a política que faltava para que um release fora do ciclo da sprint deixe de ser uma discussão a cada vez.
+
+### O que entra
+
+Exatamente a correção do #81 — **6 arquivos, +370/−14**:
+
+| Arquivo | O que muda |
+|---|---|
+| `backend/app/main.py` | A agregação do `/stats` recorta por dia: `WHERE date(timestamp) = date('now', 'localtime')` |
+| `backend/tests/test_stats_hoje.py` | Novo (6 testes) — o contrato do filtro |
+| `backend/tests/test_readonly_db.py` | Fixture com datas relativas (tira a bomba-relógio) |
+| `scripts/simulador_posto.py` | Gera 6 transações de dias anteriores + `str(datetime)` no lugar do adaptador deprecado |
+| `docs/PRD.md` | v1.6 — §11.6 corrige o FR-02, §10 revalida o AC, §11.4 registra o caso |
+| `docs/diario-de-bordo-sprint.md` | Esta entrada e a do #81 |
+
+### Por que promover fora do ciclo da sprint
+
+A regra do doc de sprint era "`develop` → `main` **uma única vez**, ao final da sprint". O defeito do #81 apareceu **depois** do release, e a regra não dizia o que fazer. A resposta agora está escrita em `docs/sprint-v1-funcional-seguranca.md`, na seção **"Exceção: release de correção crítica fora do ciclo da sprint"** — o critério passa a ser **a maturidade da entrega**, não a data.
+
+O `#81` cumpre as quatro condições: validado end-to-end (rito 8/8 no browser, 63 testes), diff só da correção, CI verde, PR revisado.
+
+E o `main` **não podia ficar como estava**:
+
+- O `main` publicado somava o banco inteiro no card "Vendas Hoje" — o FR-02 do PRD pede o total **do dia**.
+- O defeito estava **latente**: o simulador do `main` só gerava o dia corrente, então o número saía certo por coincidência. Ele apareceria no primeiro banco real, que acumula histórico.
+- A próxima sprint nasce do `main` ("`develop` é criada a partir de `main` no início da sprint"). Adiar significaria construir a sprint seguinte sobre uma base que promete "Vendas Hoje" e entrega a soma de todos os dias.
+
+### O histórico não é o diff — e por que isso muda a leitura
+
+`git log main..develop` acusava **23 commits**. A leitura ingênua diria "23 commits de trabalho pendente". É o **histórico**, não o trabalho: o release do É7 (#84) foi mergeado com **squash**, achatando 23 commits da entrega num só. O conteúdo que realmente separa `main` de `develop` são 6 arquivos.
+
+É por isso que o release sai com **merge commit**: o squash do #84 escondeu de onde cada mudança veio. A regra "release sempre com merge commit" também foi escrita no doc de sprint.
+
+### Versionamento: as primeiras tags do repositório
+
+O repositório não tinha **nenhuma tag** — "release" era só um ponteiro de branch, sem como citar ou reverter uma versão específica. A primeira tag veio agora, com a semântica `vMAJOR.MINOR.PATCH` documentada no doc de sprint:
+
+| Tag | Aponta para | O que marca |
+|---|---|---|
+| `v1.0.0` | `932f89a` | Release do É7 — V1 validada no browser. **Retroativa**: nomeia um commit que já existia, sem mover nem reescrever nada |
+| `v1.0.1` | merge commit deste release | V1 + a correção do #81 |
+
+Rotular retroativamente o #84 como `v1.0.0` evita que a numeração minta sobre um release anterior que nunca foi rotulado: assim `v1.0.1` é de fato um *patch* sobre uma `v1.0.0` que existe e é verificável.
+
+### O que o release não muda
+
+Nenhuma outra funcionalidade, nenhum commit reescrito, nenhuma issue reaberta. O `main` recebe **merge commit**, os 4 commits do #81 ficam legíveis no histórico, e as tags apontam para o que de fato está publicado.
+
+---
+
 ## 🗓️ Quarta, 21/10 (noite, parte 2) — #81: o card "Vendas Hoje" passou a contar só o dia de hoje
 
 > A última dívida que a Fase B deixou de fora. O É7 já estava fechado e o `main` recebera o release; esta correção fecha o que faltava na **semântica** do número, não na sua existência.
