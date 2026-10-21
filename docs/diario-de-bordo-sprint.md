@@ -5,6 +5,59 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite, parte 4) — Higiene do GitHub: os 7 milestones do É1..É7 fechados, É8 criado
+
+> O `main` estava correto, o código estava correto, os 54 issues estavam fechados — e mesmo assim a aba de milestones do repositório mostrava **7 épicos em andamento, todos atrasados**. Nenhum trabalho estava em andamento. Era só um container que ninguém fechava.
+
+### O que estava errado
+
+| Milestone | Estado | Issues abertas | Prazo |
+|---|---|---|---|
+| #1 É3 — Docker Hardening | `open` | 0 | 25/08 |
+| #2 É2 — Input Validation | `open` | 0 | 25/08 |
+| #3 É1 — CORS + Autenticação | `open` | 0 | 27/08 |
+| #4 É5 — Configuração + Segredos | `open` | 0 | 27/08 |
+| #5 É4 — Error Handling | `open` | 0 | 28/08 |
+| #6 É6 — Frontend Produção | `open` | 0 | 31/08 |
+| #7 É7 — V1 Funcional | `open` | 0 | 15/10 |
+
+Sete milestones abertos, **zero** issues abertas em qualquer milestone do repositório, todos os prazos vencidos (hoje é 21/10). E o trabalho de cada um comprovadamente encerrado, por três vias independentes: os issues de épico fechados (6 como `completed`, o É6 como `not_planned`), a descrição do milestone É7 ("Substitui o É6 (cancelado)") e o PRD §11 ("Épico 6 (build de produção) | **Cancelado**").
+
+### Por que ninguém fechou
+
+O GitHub **nunca fecha milestone sozinho** — é um passo manual, como `gh issue close`. E o projeto tem disciplina nesse ponto: fechou **54 de 54** issues com motivo explícito (47 `completed` + 7 `not_planned`), todas as 45 issues com responsável. O milestone era o único container sem dono do passo, porque **nenhum documento dizia que ele também fecha**. Não havia `AGENTS.md`, nem `CONTRIBUTING.md`, nem seção no doc de sprint sobre isso.
+
+Faltava a regra, não o esforço.
+
+### O que custava
+
+A aba de milestones abertos é, por convenção do GitHub, o painel de "o que está em andamento". Ela dizia **"7 em andamento, todos atrasados"** quando o quadro real era **"0 em andamento"**. Sinal invertido é pior que sinal ausente: treina o olho a ignorar o campo, e faz a lista parecer um backlog de 7 épicos abertos no momento de planejar o É8 — o É6, que é o único com uma decisão real por trás (cancelado), ficava indistinguível dos demais.
+
+### O que foi feito
+
+**1. Os 7 milestones fechados** (`PATCH /milestones/{N}` com `state=closed`), todos em 21/10/2026 18:16 UTC.
+
+Fechar milestone **não** mexe nas issues: os `stateReason` foram preservados — o #18 (É6) continua `not_planned` e o #62 (É7) continua `completed`. A distinção "entregue" vs "cancelado" vive na issue, que é onde ela deve viver.
+
+**2. O milestone É8 criado** — "É8 — Segurança & Evolução", com as 5 issues de segurança que estavam **sem milestone nenhum** (#51 L-1, #52 TLS, #53 auth real, #54 rate limit, #55 logging) ligadas a ele e com responsável atribuído. A descrição registra a precedência que o próprio #53 impõe: rate limit, logging e TLS dependem de saber **quem** está autenticado, então #53 vem primeiro.
+
+**Sem prazo, de propósito.** Os 7 milestones antigos tinham data, mas o É8 não foi estimado em story points — diferente da sprint anterior, que tinha 42 SP e 6 dias definidos no doc. Inventar uma data seria repetir o que a §11 do PRD critica: entregar sem verificação. O prazo entra junto com o planejamento.
+
+**3. A regra escrita** em `docs/sprint-v1-funcional-seguranca.md`, na seção **"GitHub: milestone fecha quando o épico fecha"**, ao lado das outras regras de processo (branch strategy, via de release fora do ciclo, versionamento por tag). E ancorada na **Definition of Pronto**: o checklist "Para a sprint completa" ganhou a linha *"Milestone da sprint fechado"*.
+
+### Estado final
+
+| | |
+|---|---|
+| Milestones | 7 `closed` (É1..É7) + 1 `open` (É8, 5 issues abertas) |
+| Issues abertas | 5 — todas no É8, **nenhuma solta** |
+| Issues fechadas | 54, todas com `stateReason` explícito e responsável |
+| Release | **nenhum** — é metadado de processo, não de produto. Vai para `develop` e chega ao `main` no próximo release, como a nota de publicação do #81 |
+
+> **A lição tem a mesma forma das outras duas desta semana.** A política de branches não existia até precisar de um hotfix fora do ciclo. O versionamento por tag não existia até precisar identificar um release. A regra de milestone não existia até precisar de um milestone fechado. **Toda regra de processo deste repositório nasceu de uma exceção** — e o custo de não ter a regra não aparece no código, aparece no painel.
+
+---
+
 ## 🗓️ Quarta, 21/10 (noite, parte 3, b) — Publicado: PR #86 mergeado no `main`, tags v1.0.0 e v1.0.1 criadas
 
 > Registro factual do que foi publicado. Os **detalhes e o porquê** estão na entrada anterior (parte 3).

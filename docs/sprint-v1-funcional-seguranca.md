@@ -187,6 +187,28 @@ A primeira tag deste repositório foi criada em 21/10/2026 e retro-rotulou o rel
 
 > O `frontend/package.json` está em `0.0.0` (placeholder do Vite) e **não** é o versionamento do produto. O `CHANGELOG` é o diário de bordo (`docs/diario-de-bordo-sprint.md`).
 
+### GitHub: milestone fecha quando o épico fecha
+
+Um milestone é o **container** de um épico. Ele fecha quando **todas as issues dele estiverem fechadas** — e fecha-se **manualmente**, porque o GitHub nunca fecha milestone sozinho.
+
+A distinção que o histórico precisa preservar mora na issue, não no milestone:
+
+| `stateReason` da issue | Significado |
+|---|---|
+| `completed` | o épico entregou o que prometeu |
+| `not_planned` | o épico foi **cancelado** — e o motivo fica registrado no corpo da issue de épico |
+
+Fechar o milestone **não** mexe em nenhuma das issues: o `stateReason` de cada uma é preservado. No caso do É6 (cancelado — "`serve` não agrega valor de estudo sem auth real", PRD §11), a issue de épico #18 continua `not_planned` e a descrição do milestone É7 continua dizendo "Substitui o É6 (cancelado)".
+
+> **Por que essa regra precisa existir (21/10/2026).** Os 7 milestones do É1..É7 estavam **abertos** com **0 issues abertas** e todos os prazos vencidos. O painel de milestones abertos é, por convenção do GitHub, o "o que está em andamento" — e ele dizia **"7 em andamento, todos atrasados"** quando o quadro real era **"0 em andamento"**. Sinal invertido é pior que sinal ausente: treina o olho a ignorar o campo, e faz a lista de milestones parecer um backlog de 7 épicos abertos no momento de planejar o próximo.
+>
+> A causa não foi descuido de um passo, foi ausência de regra: o repositório fechou **54 de 54** issues com motivo explícito, mas nenhum documento dizia que o container também fecha. A regra foi escrita na mesma hora em que a lacuna apareceu — o mesmo tratamento dado à estratégia de branches, à via de release fora do ciclo e ao versionamento por tag.
+
+**Regra prática, para não esquecer:**
+- todas as issues do milestone fechadas → **fecha o milestone**
+- épico cancelado → fecha as issues como `not_planned` e fecha o milestone
+- épico novo começa com o milestone **aberto** e as issues já ligadas a ele
+
 ---
 
 ## Branches planejadas
@@ -400,3 +422,4 @@ Dia 6:    Épico 6 (Frontend Prod)
 - [ ] PO validou o sistema integrado no `develop`
 - [ ] Merge `develop` → `main`
 - [ ] `main` estável e deployável
+- [ ] **Milestone da sprint fechado** (ver "GitHub: milestone fecha quando o épico fecha")
