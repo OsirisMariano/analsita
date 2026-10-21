@@ -33,8 +33,6 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        VITE_API_URL: http://api:8000
     container_name: analista_web
     volumes:
       - ./frontend:/app
