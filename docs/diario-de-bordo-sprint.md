@@ -5,6 +5,85 @@
 
 ---
 
+## 🗓️ Quarta, 21/10 (noite, parte 2) — #81: o card "Vendas Hoje" passou a contar só o dia de hoje
+
+> A última dívida que a Fase B deixou de fora. O É7 já estava fechado e o `main` recebera o release; esta correção fecha o que faltava na **semântica** do número, não na sua existência.
+
+### O defeito
+
+O FR-02 do PRD pede o total de vendas **do dia**. A agregação do `/stats` somava o banco inteiro:
+
+```sql
+SELECT status, COUNT(*), SUM(valor) FROM transacoes GROUP BY status
+```
+
+O card dizia "Vendas Hoje" e mostrava a soma de tudo que estivesse gravado — inclusive de meses atrás.
+
+### Por que ninguém viu (e por que a auditoria não pegou)
+
+Com o banco de referência, as 10 transações são de hoje: o card mostrava o número certo, e o bug ficava **invisível**. A auditoria FR-01..FR-19 marcou **FR-02 "✅ Conforme"** — mas conferiu que o *endpoint* existia, não que o *filtro* existia. É a mesma falha de método da §11.4 com o preflight: a verificação existia, mas cobria o caminho que **já** funcionava.
+
+### A correção
+
+```sql
+WHERE date(timestamp) = date('now', 'localtime')
+```
+
+Dia civil no fuso do servidor. `date()` aceita tanto `YYYY-MM-DD HH:MM:SS` quanto `YYYY-MM-DDTHH:MM:SS`, então o recorte não depende de como o carimbo de tempo foi gravado.
+
+**O que NÃO foi filtrado:** a tabela "5 últimas transações". Ela mostra as mais recentes de **qualquer** dia — é o que o AC do §10 promete. Filtrar a tabela esconderia do operador justamente o que ele precisa ver: uma transação antiga que deu errado.
+
+**O contrato da API não mudou** (mesmas chaves) e **o frontend não mudou** (zero linha).
+
+### A prova — nos dois sentidos
+
+| Cenário | O card mostra |
+|---|---|
+| Banco de referência (16 transações, 10 de hoje) | **R$ 803,85** |
+| O mesmo banco **sem** o filtro | R$ 1.648,86 (as 4 `CONCLUIDO` de 13, 14, 17 e 19/10 somam R$ 845,01) |
+| Com uma transação de ontem de **R$ 5.000,00** injetada | **R$ 803,85** — não se moveu (sem filtro iria a R$ 6.648,86) |
+
+### O simulador ganhou histórico — de propósito
+
+Sem transações de dias anteriores, o recorte seria invisível no produto: o banco só teria movimento de hoje, e o card mostraria o mesmo valor com ou sem o filtro. Uma regressão futura passaria despercebida — exatamente como este bug sobreviveu.
+
+O simulador agora gera **6 transações de 1 a 7 dias atrás**, além das 10 de hoje. As 10 de hoje continuam **idênticas** (mesma semente, mesma ordem de geração, conferido transação a transação): a referência da #67 não mudou — R$ 803,85, 5 concluídas, 3 falhas. `SIMULADOR_HISTORICO` controla a quantidade.
+
+Subtrair no mínimo 1 dia e mais 1 hora garante que nenhuma transação do histórico caia no dia de hoje, mesmo com o simulador rodando perto da meia-noite.
+
+### A bomba-relógio que apareceu no caminho
+
+O fixture de `backend/tests/test_readonly_db.py` criava as transações com a data `2026-10-21` — o dia em que o teste foi escrito. Com o recorte por dia, ele passava só naquele dia e passaria a falhar no dia seguinte. Provado: com o fixture no dia anterior, o teste falha com `assert 0 == 1`.
+
+As datas agora são relativas (meio-dia de hoje), o que também evita a virada da meia-noite.
+
+> **Esse é o tipo de bomba que o recorte criou** — e ela estava lá desde antes, só dormindo. Nenhum teste cobria a passagem do tempo, porque a agregação não dependia do dia.
+
+### Validação
+
+| Gate | Resultado |
+|---|---|
+| `pytest backend/tests` | **63 passed** (57 + 6 novos do #81) |
+| `flake8 backend --select=E9,F63,F7,F82` | **0** |
+| `eslint frontend/src` | **0** |
+| `npm run build` (dentro da imagem) | ✓ built |
+| Rito da #67 repetido | **8/8 ✅** — card R$ 803,85, 4 equipamentos, 15 arquivos 0 ERRO, 8/8 validações `ok`, preflight 200, console limpo |
+| Log da API | **0** respostas 403/500 |
+| Determinismo do simulador | 2 execuções seguidas → **16 transações idênticas** |
+
+### Gotchas novos
+
+- **O `entrypoint.sh` só roda o simulador se o banco não existir.** Quem já tem `data/abastece.db` precisa apagá-lo para ver o histórico — o `docker compose up` não regenera. Para a validação: `rm data/abastece.db` antes de subir.
+- **No console do browser, "Failed to fetch" durante a navegação é artefato.** Abrir outra rota com um fetch em voo aborta a requisição e o `catch` registra o erro. Com 6 s de espera entre rotas, o console fica limpo. A rota das Leitoras é `/leitoras` (sem o "s") — `/leituras` dá aviso de rota inexistente.
+- **O adaptador padrão de datetime do sqlite3 foi deprecado na 3.12.** O simulador gravava objetos `datetime` e o Python reclamava a cada inserção. `str(datetime)` escreve exatamente o mesmo formato (`YYYY-MM-DD HH:MM:SS.ffffff`) — trocado, o aviso sumiu e o formato do banco não mudou.
+
+### Estado ao fim
+
+- PRD elevado a **v1.6** — §11.6 corrige o FR-02 (de "Conforme" para "Corrigido"), §10 revalida o AC, §11.4 ganha o bloco do #81
+- Branch `feature/epico8-stats-filtro-dia` com 3 commits
+
+---
+
 ## 🗓️ Quarta, 21/10 (noite) — Fase B do É7: #67 fechada no browser (8/8 passos, 6/6 ACs)
 
 > A V1 estava "entregue em código" desde 03/10 — e nunca tinha sido olhada. Esta fase pegou o projeto inteiro, montou do zero em container isolado e executou o rito de aceite de verdade. Resultado: **4 dos 8 passos falharam na primeira rodada.** Todos os defeitos passaram pelo build, pelo eslint, pelo pytest e pela CI.
