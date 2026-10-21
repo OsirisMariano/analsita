@@ -1,10 +1,14 @@
 <script setup>
 import { onMounted } from 'vue'
 import { store } from '../store' 
+import { useRefresh } from '@/composables/useRefresh'
 
 onMounted(() => {
   store.carregarArquivos()
 })
+
+// Botão "Atualizar dados" do cabeçalho (#78)
+useRefresh(() => store.carregarArquivos())
 </script>
 
 <template>

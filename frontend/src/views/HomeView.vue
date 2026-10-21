@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import DispositivoCard from '../components/DispositivoCard.vue'
 import TabelaTransacoes from '../components/TabelaTransacoes.vue' // Novo Import
 import { API_URL } from '@/api'
+import { useRefresh } from '@/composables/useRefresh'
 
 const resumo = ref(null)
 const dispositivos = ref([])
@@ -54,6 +55,10 @@ onUnmounted(() => {
   // Sem isso o timer vaza a cada troca de rota.
   if (intervalo) clearInterval(intervalo)
 })
+
+// Botão "Atualizar dados" do cabeçalho (#78). A guarda do #65 continua
+// valendo: se já há requisição em voo, carregarDados() não empilha outra.
+useRefresh(carregarDados)
 </script>
 
 <template>
