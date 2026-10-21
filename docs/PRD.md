@@ -220,7 +220,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 | Camada | Artefatos |
 |---|---|
 | Backend | `backend/app/main.py`, `backend/requirements.txt`, `backend/Dockerfile` |
-| Frontend | `frontend/src/views/*`, `frontend/src/components/*`, `frontend/src/store.js`, `frontend/src/router/index.js` |
+| Frontend | `frontend/src/views/*`, `frontend/src/components/*`, `frontend/src/store.js`, `frontend/src/api.js`, `frontend/src/router/index.js` |
 | Infra | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile` |
 | Dados | `data/abastece.db`, `scripts/simulador_posto.py` |
 
@@ -237,7 +237,7 @@ A **V1 (MVP)** centraliza os dados críticos coletados pelo motor de análise em
 - [ ] ⏳ Últimas 5 transações aparecem com horário, placa, valor e status colorido. — *implementado (`LIMIT 5` + CSS de cores); aguardando confirmação no browser (#67)*
 - [ ] ⏳ Badge de erros na sidebar reflete os arquivos com status `ERRO`. — *implementado (`store.totalErros`); aguardando confirmação no browser (#67)*
 - [ ] ⏳ Páginas de Câmeras e Leitoras renderizam com dados (reais ou mock). — *implementado; aguardando confirmação no browser (#67)*
-- [ ] ⏳ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; validação integrada é a #67*
+- [ ] ⏳ Toda a solução sobe com `docker compose up` e a API responde em `http://localhost:8000`. — *build validado na CI; validação integrada é a #67. Desde a #75 o clone limpo não depende mais de arquivo local: o frontend usa `http://localhost:8000` como padrão e o `frontend/.env.example` versionado documenta a configuração*
 - [x] `OPTIONS` em rota pública não retorna 403. — ✅ **Corrigido em #64.** Evidência de runtime, **não** de browser: pytest parametrizado nas 7 rotas públicas (falha em 16 casos ao remover a isenção) + `curl` contra `uvicorn` real devolvendo `200` com `access-control-allow-origin`; origem não permitida segue sem o cabeçalho (SEC-01) e `GET` sem chave segue em `403`. Confirmação no browser fica para a #67.
 
 ---
@@ -281,6 +281,15 @@ A sprint consumiu **42 SP** e entregou 5 de 6 épicos. Nesse intervalo **a V1 fu
 > **Sobre os "13 ERROS" de `/arquivos` medidos em 01/10 (#66):** o número era **artefato do ambiente de medição**, não um defeito do produto. A medição foi feita com a API rodando **no host** (porta 8899), onde os caminhos de container (`/etc/abastece`, `/var/abastece/SLT`, `/home/pi`, `/etc/zabbix`, `/var/DS_SFTP`) não existem — só `/etc/hosts` e `/etc/hostname` batem, e são exatamente 2 → 13 ERROS. Dentro do container, o `mock_data` cobre 14 dos 15; o único que falhava era `/var/DS_SFTP/config.json`, cujo mock existia mas **não estava montado** no compose. Corrigido em 21/10.
 >
 > **Lição:** medir estado de produto dentro do ambiente em que ele roda. `/arquivos` e `/validacao-dados` só fazem sentido com os volumes do compose montados.
+
+**Estado em 21/10/2026 (#74, #75):** duas dívidas da §11.4 fechadas. Ambas mudam o código sem mudar a tela — o que se vê no browser é o mesmo antes e depois:
+
+| Issue | Correção | Evidência |
+|---|---|---|
+| #74 | O banco é aberto com `mode=ro` — a API não escreve no banco, e agora isso é garantido pelo motor do SQLite, não por convenção de código | `backend/tests/test_readonly_db.py` (3 testes; 2 deles falham se o `mode=ro` for removido) + `/stats` e `/transacoes` respondendo 200 em container real |
+| #75 | O frontend não depende mais do `frontend/.env` (que não é versionado): a URL da API tem valor padrão e há um `.env.example` versionado | `frontend/src/api.js` (fonte única da URL) + `frontend/.env.example` versionado + clone sem `.env` carregando o painel |
+
+> **Por que o mount de `./data` continua gravável.** A tentativa natural era colocar `:ro` no volume do compose, mas o `entrypoint.sh` precisa **criar** o banco quando ele ainda não existe — um diretório somente-leitura impediria isso. A garantia que importa ("a API não escreve") foi posta no lugar certo: dentro do programa, com `mode=ro`. O isolamento de filesystem continua não implementado e está fora do escopo da V1.
 
 > ⚠️ **Sobre a numeração de linhas:** o `ApiKeyMiddleware` ocupa `backend/app/main.py:54-88` na revisão de 03/10. A referência `41-48` aqui estava defasada desde a #63.
 

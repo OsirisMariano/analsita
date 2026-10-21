@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import DispositivoCard from '../components/DispositivoCard.vue'
 import TabelaTransacoes from '../components/TabelaTransacoes.vue' // Novo Import
+import { API_URL } from '@/api'
 
 const resumo = ref(null)
 const dispositivos = ref([])
@@ -23,8 +24,8 @@ const carregarDados = async () => {
   try {
     // Busca resumo/stats e monitoramento em paralelo
     const [resStats, resMonit] = await Promise.all([
-      fetch(`${import.meta.env.VITE_API_URL}/stats`),
-      fetch(`${import.meta.env.VITE_API_URL}/monitoramento`)
+      fetch(`${API_URL}/stats`),
+      fetch(`${API_URL}/monitoramento`)
     ])
 
     const dataStats = await resStats.json()
